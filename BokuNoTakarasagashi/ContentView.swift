@@ -1,0 +1,290 @@
+//
+//  ContentView.swift
+//  BokuNoTakarasagashi
+//
+
+import SwiftData
+import SwiftUI
+
+struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Query(sort: \TreasureHunt.updatedAt, order: .reverse)
+    private var hunts: [TreasureHunt]
+
+    @State private var isCreatingHunt = false
+    @State private var editingHunt: TreasureHunt?
+    @State private var playingHunt: TreasureHunt?
+
+    var body: some View {
+        NavigationStack {
+            TreasureBackground {
+                ScrollView {
+                    VStack(spacing: 28) {
+                        hero
+
+                        if hunts.isEmpty {
+                            emptyState
+                        } else {
+                            huntList
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                    .padding(.bottom, 40)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isCreatingHunt = true
+                    } label: {
+                        Label("宝探しをつくる", systemImage: "plus")
+                    }
+                    .tint(TreasureTheme.teal)
+                }
+            }
+        }
+        .sheet(isPresented: $isCreatingHunt) {
+            HuntEditorView(hunt: nil)
+        }
+        .sheet(item: $editingHunt) { hunt in
+            ProtectedHuntEditorView(hunt: hunt)
+        }
+        .fullScreenCover(item: $playingHunt) { hunt in
+            PlaySessionView(hunt: hunt)
+        }
+        .onAppear(perform: resumeLockedSessionIfNeeded)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                resumeLockedSessionIfNeeded()
+            }
+        }
+    }
+
+    private var hero: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(TreasureTheme.gold)
+                    .frame(width: 76, height: 76)
+                    .shadow(color: TreasureTheme.gold.opacity(0.35), radius: 14, y: 7)
+
+                Image(systemName: "map.fill")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            .accessibilityHidden(true)
+
+            Text("ぼくの宝探し")
+                .font(.system(.largeTitle, design: .rounded, weight: .heavy))
+                .foregroundStyle(TreasureTheme.ink)
+
+            Text("家の中が、きょうの冒険になる。")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 32))
+                .foregroundStyle(TreasureTheme.gold)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 7) {
+                Text("最初の冒険をつくろう")
+                    .font(.title3.bold())
+                    .foregroundStyle(TreasureTheme.ink)
+
+                Text("ヒントと宝を用意したら、\niPhoneをさがす人に渡してスタート。")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                isCreatingHunt = true
+            } label: {
+                Label("宝探しをつくる", systemImage: "plus.circle.fill")
+            }
+            .buttonStyle(TreasurePrimaryButtonStyle())
+        }
+        .treasureCard()
+    }
+
+    private var huntList: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("宝探し")
+                    .font(.title2.bold())
+                    .foregroundStyle(TreasureTheme.ink)
+
+                Spacer()
+
+                Text("\(hunts.count)こ")
+                    .font(.caption.bold())
+                    .foregroundStyle(TreasureTheme.teal)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(TreasureTheme.teal.opacity(0.12), in: Capsule())
+            }
+
+            ForEach(hunts) { hunt in
+                HuntCard(
+                    hunt: hunt,
+                    onPlay: { playingHunt = hunt },
+                    onEdit: { editingHunt = hunt }
+                )
+            }
+
+            Button {
+                isCreatingHunt = true
+            } label: {
+                Label("新しい宝探しをつくる", systemImage: "plus")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.bordered)
+            .tint(TreasureTheme.teal)
+        }
+    }
+
+    private func resumeLockedSessionIfNeeded() {
+        guard playingHunt == nil else { return }
+        playingHunt = hunts.first(where: \.isChildModeLocked)
+    }
+}
+
+private struct HuntCard: View {
+    let hunt: TreasureHunt
+    let onPlay: () -> Void
+    let onEdit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(statusColor.opacity(0.15))
+
+                    Image(systemName: statusIcon)
+                        .font(.title2)
+                        .foregroundStyle(statusColor)
+                }
+                .frame(width: 50, height: 50)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(hunt.title)
+                        .font(.title3.bold())
+                        .foregroundStyle(TreasureTheme.ink)
+                        .lineLimit(2)
+
+                    HStack(spacing: 7) {
+                        Text(statusTitle)
+                            .foregroundStyle(statusColor)
+
+                        Text("・")
+
+                        Text("宝 \(hunt.stages.count)こ")
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+
+                Spacer()
+
+                Button(action: onEdit) {
+                    Image(systemName: "slider.horizontal.3")
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+                .tint(TreasureTheme.ink)
+                .accessibilityLabel("\(hunt.title)を編集")
+            }
+
+            if hunt.playState == .inProgress, !hunt.stages.isEmpty {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text("いまの場所")
+                        Spacer()
+                        Text("\(min(hunt.currentStageIndex + 1, hunt.stages.count)) / \(hunt.stages.count)")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    ProgressView(
+                        value: Double(min(hunt.currentStageIndex, hunt.stages.count)),
+                        total: Double(hunt.stages.count)
+                    )
+                    .tint(TreasureTheme.gold)
+                }
+            }
+
+            Button(action: onPlay) {
+                Label(playButtonTitle, systemImage: playButtonIcon)
+            }
+            .buttonStyle(TreasurePrimaryButtonStyle())
+        }
+        .treasureCard()
+    }
+
+    private var statusTitle: String {
+        switch hunt.playState {
+        case .ready:
+            "準備できました"
+        case .inProgress:
+            "冒険の途中"
+        case .completed:
+            "クリア"
+        }
+    }
+
+    private var statusIcon: String {
+        switch hunt.playState {
+        case .ready:
+            "map.fill"
+        case .inProgress:
+            "figure.walk.motion"
+        case .completed:
+            "trophy.fill"
+        }
+    }
+
+    private var statusColor: Color {
+        switch hunt.playState {
+        case .ready:
+            TreasureTheme.teal
+        case .inProgress:
+            TreasureTheme.coral
+        case .completed:
+            TreasureTheme.gold
+        }
+    }
+
+    private var playButtonTitle: String {
+        switch hunt.playState {
+        case .ready:
+            "この冒険をはじめる"
+        case .inProgress:
+            "つづきから"
+        case .completed:
+            "もういちど遊ぶ"
+        }
+    }
+
+    private var playButtonIcon: String {
+        hunt.playState == .inProgress ? "arrow.right.circle.fill" : "play.fill"
+    }
+}
+
+#Preview {
+    ContentView()
+        .modelContainer(
+            for: [TreasureHunt.self, TreasureStage.self],
+            inMemory: true
+        )
+}

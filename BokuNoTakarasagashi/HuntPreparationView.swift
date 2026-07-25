@@ -207,6 +207,17 @@ private struct PreparationStageCard: View {
                 Text(stage.hint)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(TreasureTheme.ink)
+
+                if let extraHint = stage.availableExtraHint {
+                    Text("おたすけヒント")
+                        .font(.caption.bold())
+                        .foregroundStyle(TreasureTheme.coral)
+                        .padding(.top, 5)
+
+                    Text(extraHint)
+                        .font(.caption)
+                        .foregroundStyle(TreasureTheme.ink)
+                }
             }
 
             Divider()

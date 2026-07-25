@@ -17,6 +17,7 @@ struct PlaySessionView: View {
     @State private var isShowingParentGate = false
     @State private var isShowingQRCodeScanner = false
     @State private var isShowingDiscovery = false
+    @State private var isShowingExtraHintConfirmation = false
     @State private var passphrase = ""
     @State private var answerError: String?
     @State private var persistenceError: String?
@@ -110,6 +111,16 @@ struct PlaySessionView: View {
                 )
             }
         }
+        .confirmationDialog(
+            "おたすけヒントを見る？",
+            isPresented: $isShowingExtraHintConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("おたすけヒントを見る", action: revealExtraHint)
+            Button("まだ自分で考える", role: .cancel) {}
+        } message: {
+            Text("少し考えても分からないときに見てみよう。")
+        }
         .alert("進み具合を保存できませんでした", isPresented: persistenceErrorIsPresented) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -180,6 +191,7 @@ struct PlaySessionView: View {
                         }
                         .treasureCard()
 
+                        extraHintControls(for: stage)
                         verificationControls(for: stage)
                     }
                     .padding(.horizontal, 20)
@@ -196,6 +208,51 @@ struct PlaySessionView: View {
             } actions: {
                 Button("おうちの人", action: { isShowingParentGate = true })
                     .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func extraHintControls(for stage: TreasureStage) -> some View {
+        if let extraHint = stage.availableExtraHint {
+            if hunt.revealedExtraHintStageID == stage.id {
+                VStack(spacing: 12) {
+                    Label("おたすけヒント", systemImage: "lightbulb.fill")
+                        .font(.headline)
+                        .foregroundStyle(TreasureTheme.coral)
+
+                    Text(extraHint)
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(TreasureTheme.ink)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("おたすけヒント、\(extraHint)")
+                }
+                .padding(18)
+                .background(
+                    TreasureTheme.gold.opacity(0.18),
+                    in: RoundedRectangle(cornerRadius: 18)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(TreasureTheme.gold.opacity(0.45), lineWidth: 1.5)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else {
+                VStack(spacing: 8) {
+                    Button {
+                        isShowingExtraHintConfirmation = true
+                    } label: {
+                        Label("もう少しヒントを見る", systemImage: "lightbulb")
+                            .font(.headline)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(TreasureTheme.coral)
+
+                    Text("分からないときに使ってね")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -351,6 +408,18 @@ struct PlaySessionView: View {
         }
     }
 
+    private func revealExtraHint() {
+        guard let stage = currentStage,
+              stage.availableExtraHint != nil else {
+            return
+        }
+
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+            hunt.revealedExtraHintStageID = stage.id
+        }
+        saveProgress()
+    }
+
     private func continueAfterDiscovery() {
         let wasLastStage = currentStageIsLast
 
@@ -364,6 +433,7 @@ struct PlaySessionView: View {
         passphrase = ""
         answerError = nil
         isShowingQRCodeScanner = false
+        isShowingExtraHintConfirmation = false
         withAnimation(.easeInOut) {
             isShowingDiscovery = false
             if wasLastStage {

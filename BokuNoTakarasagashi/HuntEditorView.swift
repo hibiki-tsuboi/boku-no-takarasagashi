@@ -196,6 +196,7 @@ struct HuntEditorView: View {
         destination.currentStageIndex = 0
         destination.playState = .ready
         destination.isChildModeLocked = false
+        destination.revealedExtraHintStageID = nil
         destination.updatedAt = .now
 
         if !draft.parentPIN.isEmpty {
@@ -210,6 +211,9 @@ struct HuntEditorView: View {
             let stage = TreasureStage(
                 orderIndex: index,
                 hint: stageDraft.hint.trimmed,
+                extraHint: stageDraft.extraHint.trimmed.isEmpty
+                    ? nil
+                    : stageDraft.extraHint.trimmed,
                 discoveryMessage: stageDraft.discoveryMessage.trimmed,
                 verification: stageDraft.verification,
                 passphrase: stageDraft.passphrase.trimmed,
@@ -256,6 +260,7 @@ private struct HuntDraft {
 private struct StageDraft: Identifiable {
     let id: UUID
     var hint: String
+    var extraHint: String
     var discoveryMessage: String
     var verification: TreasureVerification
     var passphrase: String
@@ -264,6 +269,7 @@ private struct StageDraft: Identifiable {
     init(
         id: UUID = UUID(),
         hint: String = "",
+        extraHint: String = "",
         discoveryMessage: String = "やったね！宝を見つけた！",
         verification: TreasureVerification = .honesty,
         passphrase: String = "",
@@ -271,6 +277,7 @@ private struct StageDraft: Identifiable {
     ) {
         self.id = id
         self.hint = hint
+        self.extraHint = extraHint
         self.discoveryMessage = discoveryMessage
         self.verification = verification
         self.passphrase = passphrase
@@ -280,6 +287,7 @@ private struct StageDraft: Identifiable {
     init(stage: TreasureStage) {
         id = stage.id
         hint = stage.hint
+        extraHint = stage.extraHint ?? ""
         discoveryMessage = stage.discoveryMessage
         verification = stage.verification
         passphrase = stage.passphrase
@@ -353,6 +361,15 @@ private struct StageEditorView: View {
                 Text("ヒント")
             } footer: {
                 Text("隠し場所を直接言わず、子どもが考えられる言葉にします。")
+            }
+
+            Section {
+                TextEditor(text: $stage.extraHint)
+                    .frame(minHeight: 82)
+            } header: {
+                Text("おたすけヒント（任意）")
+            } footer: {
+                Text("通常のヒントで難しいときだけ、さがす人が自分で開けます。空欄なら表示されません。")
             }
 
             Section {

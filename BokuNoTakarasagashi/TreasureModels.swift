@@ -60,6 +60,7 @@ final class TreasureHunt {
     var currentStageIndex: Int
     var playStateRawValue: String
     var isChildModeLocked: Bool
+    var revealedExtraHintStageID: UUID?
 
     @Relationship(deleteRule: .cascade, inverse: \TreasureStage.hunt)
     var stages: [TreasureStage]
@@ -80,6 +81,7 @@ final class TreasureHunt {
         currentStageIndex = 0
         playStateRawValue = HuntPlayState.ready.rawValue
         isChildModeLocked = false
+        revealedExtraHintStageID = nil
         stages = []
     }
 
@@ -98,6 +100,7 @@ final class TreasureHunt {
         currentStageIndex = 0
         playState = .inProgress
         isChildModeLocked = true
+        revealedExtraHintStageID = nil
         updatedAt = .now
     }
 
@@ -109,11 +112,13 @@ final class TreasureHunt {
 
     func advanceToNextStage() {
         currentStageIndex += 1
+        revealedExtraHintStageID = nil
         updatedAt = .now
     }
 
     func completeGame() {
         playState = .completed
+        revealedExtraHintStageID = nil
         updatedAt = .now
     }
 
@@ -128,6 +133,7 @@ final class TreasureStage {
     var id: UUID
     var orderIndex: Int
     var hint: String
+    var extraHint: String?
     var discoveryMessage: String
     var verificationRawValue: String
     var passphrase: String
@@ -137,6 +143,7 @@ final class TreasureStage {
     init(
         orderIndex: Int,
         hint: String,
+        extraHint: String? = nil,
         discoveryMessage: String,
         verification: TreasureVerification,
         passphrase: String,
@@ -146,6 +153,7 @@ final class TreasureStage {
         id = UUID()
         self.orderIndex = orderIndex
         self.hint = hint
+        self.extraHint = extraHint
         self.discoveryMessage = discoveryMessage
         verificationRawValue = verification.rawValue
         self.passphrase = passphrase
@@ -164,6 +172,18 @@ final class TreasureStage {
 
     var verificationPayload: String {
         TreasurePayload.make(token: verificationToken ?? id.uuidString)
+    }
+
+    var availableExtraHint: String? {
+        guard let extraHint else {
+            return nil
+        }
+
+        let value = extraHint.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else {
+            return nil
+        }
+        return value
     }
 }
 

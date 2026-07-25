@@ -8,10 +8,19 @@ import SwiftUI
 
 struct NFCWriterControl: View {
     let payload: String
+    let onWriteSuccess: () -> Void
 
     @State private var sessionController: NFCSessionController?
     @State private var resultMessage: String?
     @State private var writeSucceeded = false
+
+    init(
+        payload: String,
+        onWriteSuccess: @escaping () -> Void = {}
+    ) {
+        self.payload = payload
+        self.onWriteSuccess = onWriteSuccess
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -54,6 +63,7 @@ struct NFCWriterControl: View {
             case .success:
                 writeSucceeded = true
                 resultMessage = "書き込みました。このタグを宝といっしょに置いてください。"
+                onWriteSuccess()
             case let .failure(error):
                 guard error != .cancelled else { return }
                 writeSucceeded = false
@@ -68,18 +78,34 @@ struct NFCWriterControl: View {
 
 struct NFCReaderControl: View {
     let expectedPayload: String
+    let buttonTitle: String
+    let instruction: String
+    let successMessage: String
+    let usesPrimaryButtonStyle: Bool
     let onMatch: () -> Void
 
     @State private var sessionController: NFCSessionController?
     @State private var errorMessage: String?
 
+    init(
+        expectedPayload: String,
+        buttonTitle: String = "NFCタグを読み取る",
+        instruction: String = "宝のNFCタグにiPhoneの上部を近づけてね",
+        successMessage: String = "宝を見つけた！",
+        usesPrimaryButtonStyle: Bool = true,
+        onMatch: @escaping () -> Void
+    ) {
+        self.expectedPayload = expectedPayload
+        self.buttonTitle = buttonTitle
+        self.instruction = instruction
+        self.successMessage = successMessage
+        self.usesPrimaryButtonStyle = usesPrimaryButtonStyle
+        self.onMatch = onMatch
+    }
+
     var body: some View {
         VStack(spacing: 10) {
-            Button(action: beginReading) {
-                Label("NFCタグを読み取る", systemImage: "wave.3.right.circle.fill")
-            }
-            .buttonStyle(TreasurePrimaryButtonStyle())
-            .disabled(!NFCSessionController.isAvailable)
+            readButton
 
             if let errorMessage {
                 Text(errorMessage)
@@ -87,7 +113,7 @@ struct NFCReaderControl: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(TreasureTheme.coral)
             } else if NFCSessionController.isAvailable {
-                Text("宝のNFCタグにiPhoneの上部を近づけてね")
+                Text(instruction)
                     .font(.caption)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
@@ -99,11 +125,31 @@ struct NFCReaderControl: View {
         }
     }
 
+    @ViewBuilder
+    private var readButton: some View {
+        if usesPrimaryButtonStyle {
+            Button(action: beginReading) {
+                Label(buttonTitle, systemImage: "wave.3.right.circle.fill")
+            }
+            .buttonStyle(TreasurePrimaryButtonStyle())
+            .disabled(!NFCSessionController.isAvailable)
+        } else {
+            Button(action: beginReading) {
+                Label(buttonTitle, systemImage: "wave.3.right.circle.fill")
+            }
+            .buttonStyle(.bordered)
+            .disabled(!NFCSessionController.isAvailable)
+        }
+    }
+
     private func beginReading() {
         errorMessage = nil
 
         let controller = NFCSessionController(
-            operation: .read(expectedPayload: expectedPayload)
+            operation: .read(
+                expectedPayload: expectedPayload,
+                successMessage: successMessage
+            )
         ) { result in
             switch result {
             case .success:
@@ -122,7 +168,7 @@ struct NFCReaderControl: View {
 @MainActor
 final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     enum Operation {
-        case read(expectedPayload: String)
+        case read(expectedPayload: String, successMessage: String)
         case write(payload: String)
     }
 
@@ -218,10 +264,11 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                 }
 
                 switch self.operation {
-                case let .read(expectedPayload):
+                case let .read(expectedPayload, successMessage):
                     self.read(
                         tag: connectedTag,
                         expectedPayload: expectedPayload,
+                        successMessage: successMessage,
                         session: connectedSession
                     )
                 case let .write(payload):
@@ -238,6 +285,7 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     private func read(
         tag: NFCNDEFTag,
         expectedPayload: String,
+        successMessage: String,
         session: NFCNDEFReaderSession
     ) {
         let sessionBox = UncheckedSendableBox(session)
@@ -266,7 +314,7 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                 if values.contains(where: {
                     TreasurePayload.matches($0, expected: expectedPayload)
                 }) {
-                    activeSession.alertMessage = "宝を見つけた！"
+                    activeSession.alertMessage = successMessage
                     activeSession.invalidate()
                     self.finish(.success(()))
                 } else {

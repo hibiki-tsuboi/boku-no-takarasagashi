@@ -30,7 +30,7 @@ struct PlaySessionView: View {
         } else if hunt.playState == .inProgress {
             initialPhase = .handoff
         } else {
-            initialPhase = .safety
+            initialPhase = .preparation
         }
         _phase = State(initialValue: initialPhase)
     }
@@ -39,6 +39,17 @@ struct PlaySessionView: View {
         ZStack {
             TreasureBackground {
                 switch phase {
+                case .preparation:
+                    HuntPreparationView(
+                        hunt: hunt,
+                        onClose: { dismiss() },
+                        onContinue: {
+                            withAnimation(.easeInOut) {
+                                phase = .safety
+                            }
+                        }
+                    )
+
                 case .safety:
                     SafetyCheckView(
                         isConfirmed: $safetyIsConfirmed,
@@ -378,6 +389,7 @@ struct PlaySessionView: View {
 }
 
 private enum PlayPhase {
+    case preparation
     case safety
     case handoff
     case playing
@@ -578,7 +590,7 @@ private struct HandoffView: View {
     }
 }
 
-private struct PlaySetupHeader: View {
+struct PlaySetupHeader: View {
     let title: String
     let onClose: () -> Void
 

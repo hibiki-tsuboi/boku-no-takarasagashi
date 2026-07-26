@@ -136,6 +136,8 @@ struct HuntEditorView: View {
                             .foregroundStyle(TreasureTheme.coralText)
                         }
                     }
+                    .foregroundStyle(TreasureTheme.secondaryText)
+                    .treasureCompactCard()
                 }
 
                 Section {
@@ -425,7 +427,9 @@ private struct StageRow: View {
                     .fill(isLast ? TreasureTheme.gold : TreasureTheme.teal.opacity(0.15))
 
                 Image(systemName: isLast ? "gift.fill" : "\(number).circle.fill")
-                    .foregroundStyle(isLast ? .white : TreasureTheme.teal)
+                    .foregroundStyle(
+                        isLast ? .white : TreasureTheme.tealText
+                    )
             }
             .frame(width: 38, height: 38)
 
@@ -445,7 +449,7 @@ private struct StageRow: View {
 
                 Text(stage.hint.trimmed.isEmpty ? "ヒントを入力してください" : stage.hint)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
                     .lineLimit(1)
             }
 
@@ -460,7 +464,7 @@ private struct StageRow: View {
 
             Image(systemName: stage.verification.systemImage)
                 .font(.caption)
-                .foregroundStyle(TreasureTheme.teal)
+                .foregroundStyle(TreasureTheme.tealText)
                 .accessibilityLabel("発見方法、\(stage.verification.title)")
         }
         .padding(.vertical, 3)
@@ -700,7 +704,7 @@ private struct CharacterLimitStatus: View {
             .font(.caption)
             .foregroundStyle(
                 count <= maximum
-                    ? Color.secondary
+                    ? TreasureTheme.secondaryText
                     : TreasureTheme.coralText
             )
             .frame(maxWidth: .infinity, alignment: .trailing)

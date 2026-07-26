@@ -53,7 +53,7 @@ struct NFCWriterControl: View {
             } else {
                 Text("NFCは対応する実機のiPhoneで設定できます。")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
         }
         .confirmationDialog(
@@ -142,11 +142,11 @@ struct NFCReaderControl: View {
                 Text(instruction)
                     .font(.caption)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             } else {
                 Text("このiPhoneではNFCを読み取れません")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
         }
     }

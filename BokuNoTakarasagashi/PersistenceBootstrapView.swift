@@ -146,20 +146,25 @@ private struct PersistenceRecoveryView: View {
         TreasureBackground(style: .security) {
             ScrollView {
                 VStack(spacing: 22) {
-                    Image(systemName: "externaldrive.badge.exclamationmark")
-                        .font(.system(size: 52))
-                        .foregroundStyle(TreasureTheme.coralText)
-                        .accessibilityHidden(true)
+                    VStack(spacing: 12) {
+                        Image(systemName: "externaldrive.badge.exclamationmark")
+                            .font(.system(size: 52))
+                            .foregroundStyle(TreasureTheme.coralText)
+                            .accessibilityHidden(true)
 
-                    VStack(spacing: 8) {
-                        Text("冒険のデータを開けません")
-                            .font(.title2.bold())
-                            .foregroundStyle(TreasureTheme.ink)
+                        VStack(spacing: 8) {
+                            Text("冒険のデータを開けません")
+                                .font(.title2.bold())
+                                .foregroundStyle(TreasureTheme.ink)
 
-                        Text("データは削除していません。まずはもう一度ためしてください。")
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
+                            Text("データは削除していません。まずはもう一度ためしてください。")
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(
+                                    TreasureTheme.secondaryText
+                                )
+                        }
                     }
+                    .treasureCompactCard()
 
                     Button("もう一度ためす", action: onRetry)
                         .buttonStyle(TreasurePrimaryButtonStyle())
@@ -170,22 +175,26 @@ private struct PersistenceRecoveryView: View {
                             Text(failure.diagnostics)
                         }
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 8)
                     }
                     .treasureCard()
 
-                    Button("端末内データを初期化", role: .destructive) {
-                        isShowingResetConfirmation = true
-                    }
-                    .buttonStyle(.bordered)
+                    VStack(spacing: 12) {
+                        Button("端末内データを初期化", role: .destructive) {
+                            isShowingResetConfirmation = true
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(TreasureTheme.coralText)
 
-                    Text("初期化すると、宝探し・冒険のきろく・写真がこの端末から削除され、元に戻せません。")
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.coralText)
+                        Text("初期化すると、宝探し・冒険のきろく・写真がこの端末から削除され、元に戻せません。")
+                            .font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(TreasureTheme.coralText)
+                    }
+                    .treasureCompactCard()
                 }
                 .frame(maxWidth: 520)
                 .padding(24)

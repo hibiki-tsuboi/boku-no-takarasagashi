@@ -124,6 +124,8 @@ private struct AppPrivacyShieldContent: View {
                             .disabled(isAuthenticating)
                     }
                 }
+                .frame(maxWidth: 368)
+                .treasureCard()
                 .padding(24)
                 .foregroundStyle(TreasureTheme.ink)
             }

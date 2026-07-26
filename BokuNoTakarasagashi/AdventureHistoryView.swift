@@ -25,6 +25,8 @@ struct AdventureHistoryView: View {
                         } description: {
                             Text("宝探しをクリアすると、ここに冒険の記録が残ります。")
                         }
+                        .treasureCompactCard()
+                        .padding(24)
                     }
                 } else {
                     List {
@@ -106,7 +108,7 @@ private struct AdventureRecordRow: View {
                    !playerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Label(playerName, systemImage: "person.fill")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                 }
 
                 Text(
@@ -119,7 +121,7 @@ private struct AdventureRecordRow: View {
                         .minute()
                 )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TreasureTheme.secondaryText)
 
                 HStack(spacing: 14) {
                     Label(
@@ -133,7 +135,7 @@ private struct AdventureRecordRow: View {
                     )
                 }
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(TreasureTheme.teal)
+                .foregroundStyle(TreasureTheme.tealText)
             }
         }
         .padding(.vertical, 5)

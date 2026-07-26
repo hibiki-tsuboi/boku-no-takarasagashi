@@ -128,10 +128,10 @@ struct AudioSettingsView: View {
                         )
                     } icon: {
                         Image(systemName: "text.bubble.fill")
-                            .foregroundStyle(TreasureTheme.teal)
+                            .foregroundStyle(TreasureTheme.tealText)
                     }
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
                 }
             }
             .navigationTitle("音の設定")
@@ -159,11 +159,11 @@ struct AudioSettingsView: View {
 
                 Text(description)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
         } icon: {
             Image(systemName: systemImage)
-                .foregroundStyle(TreasureTheme.teal)
+                .foregroundStyle(TreasureTheme.tealText)
         }
     }
 }

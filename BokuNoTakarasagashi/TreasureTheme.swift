@@ -23,6 +23,18 @@ nonisolated struct TreasureColorComponents: Sendable {
         return (brighter + 0.05) / (darker + 0.05)
     }
 
+    nonisolated func composited(
+        over background: TreasureColorComponents,
+        opacity: Double
+    ) -> TreasureColorComponents {
+        let opacity = min(max(opacity, 0), 1)
+        return TreasureColorComponents(
+            red: red * opacity + background.red * (1 - opacity),
+            green: green * opacity + background.green * (1 - opacity),
+            blue: blue * opacity + background.blue * (1 - opacity)
+        )
+    }
+
     nonisolated private var relativeLuminance: Double {
         0.2126 * linearized(red)
             + 0.7152 * linearized(green)
@@ -37,6 +49,11 @@ nonisolated struct TreasureColorComponents: Sendable {
 }
 
 enum TreasureTheme {
+    static let blackComponents = TreasureColorComponents(
+        red: 0,
+        green: 0,
+        blue: 0
+    )
     static let whiteComponents = TreasureColorComponents(
         red: 1,
         green: 1,
@@ -57,14 +74,51 @@ enum TreasureTheme {
         green: 0.18,
         blue: 0.12
     )
+    static let inkComponents = TreasureColorComponents(
+        red: 0.13,
+        green: 0.20,
+        blue: 0.25
+    )
+    static let tealComponents = TreasureColorComponents(
+        red: 0.10,
+        green: 0.48,
+        blue: 0.49
+    )
+    static let tealTextComponents = TreasureColorComponents(
+        red: 0.07,
+        green: 0.41,
+        blue: 0.42
+    )
+    static let secondaryTextComponents = TreasureColorComponents(
+        red: 0.32,
+        green: 0.36,
+        blue: 0.39
+    )
+    static let goldComponents = TreasureColorComponents(
+        red: 0.95,
+        green: 0.64,
+        blue: 0.15
+    )
+    static let coralComponents = TreasureColorComponents(
+        red: 0.91,
+        green: 0.35,
+        blue: 0.27
+    )
 
-    static let ink = Color(red: 0.13, green: 0.20, blue: 0.25)
-    static let teal = Color(red: 0.10, green: 0.48, blue: 0.49)
-    static let gold = Color(red: 0.95, green: 0.64, blue: 0.15)
-    static let coral = Color(red: 0.91, green: 0.35, blue: 0.27)
+    static let cardSurfaceOpacity = 0.96
+    static let titleSecondaryScrimOpacity = 0.58
+
+    static let ink = inkComponents.color
+    static let teal = tealComponents.color
+    static let tealText = tealTextComponents.color
+    static let secondaryText = secondaryTextComponents.color
+    static let gold = goldComponents.color
+    static let coral = coralComponents.color
     static let goldText = goldTextComponents.color
     static let coralText = coralTextComponents.color
+    static let dangerBackground = coralText
     static let cream = creamComponents.color
+    static let cardSurface = Color.white.opacity(cardSurfaceOpacity)
 
     static let background = LinearGradient(
         colors: [
@@ -138,18 +192,41 @@ struct TreasureCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(20)
-            .background(.white.opacity(0.88), in: RoundedRectangle(cornerRadius: 24))
+            .background(
+                TreasureTheme.cardSurface,
+                in: RoundedRectangle(cornerRadius: 24)
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: 24)
-                    .stroke(.white.opacity(0.8), lineWidth: 1)
+                    .stroke(.white.opacity(0.9), lineWidth: 1)
             }
             .shadow(color: TreasureTheme.ink.opacity(0.08), radius: 18, y: 8)
+    }
+}
+
+struct TreasureCompactCardModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .background(
+                TreasureTheme.cardSurface,
+                in: RoundedRectangle(cornerRadius: 16)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(.white.opacity(0.9), lineWidth: 1)
+            }
     }
 }
 
 extension View {
     func treasureCard() -> some View {
         modifier(TreasureCardModifier())
+    }
+
+    func treasureCompactCard() -> some View {
+        modifier(TreasureCompactCardModifier())
     }
 
     func treasureBackground(_ style: TreasureBackgroundStyle) -> some View {
@@ -165,13 +242,24 @@ struct TreasurePrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(
+                isEnabled ? Color.white : TreasureTheme.secondaryText
+            )
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
             .background(
-                isEnabled ? TreasureTheme.teal : Color.secondary.opacity(0.4),
+                isEnabled ? TreasureTheme.teal : TreasureTheme.cardSurface,
                 in: RoundedRectangle(cornerRadius: 16)
             )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        isEnabled
+                            ? Color.clear
+                            : TreasureTheme.secondaryText.opacity(0.28),
+                        lineWidth: 1
+                    )
+            }
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.88 : 1)
             .animation(.easeOut(duration: 0.14), value: configuration.isPressed)

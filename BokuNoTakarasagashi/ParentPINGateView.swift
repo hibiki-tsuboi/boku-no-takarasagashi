@@ -24,7 +24,7 @@ struct ParentPINGateView: View {
                         VStack(spacing: 22) {
                             Image(systemName: "lock.shield.fill")
                                 .font(.system(size: 48))
-                                .foregroundStyle(TreasureTheme.teal)
+                                .foregroundStyle(TreasureTheme.tealText)
                                 .accessibilityHidden(true)
 
                             VStack(spacing: 8) {
@@ -35,8 +35,9 @@ struct ParentPINGateView: View {
                                 Text("宝探しを作ったときの\n4桁のPINを入力してください")
                                     .font(.body)
                                     .multilineTextAlignment(.center)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(TreasureTheme.secondaryText)
                             }
+                            .treasureCompactCard()
 
                             VStack(spacing: 10) {
                                 SecureField("4桁のPIN", text: $pin)
@@ -79,6 +80,7 @@ struct ParentPINGateView: View {
                                 )
                             }
                             .frame(maxWidth: 280)
+                            .treasureCompactCard()
                         }
                         .frame(maxWidth: .infinity)
                         .padding(24)

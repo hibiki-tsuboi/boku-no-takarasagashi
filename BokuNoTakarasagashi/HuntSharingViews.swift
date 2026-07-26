@@ -96,21 +96,24 @@ struct ProtectedHuntActionView: View {
             Spacer()
 
             if let duplicatedTitle {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 58))
-                    .foregroundStyle(TreasureTheme.teal)
-                    .accessibilityHidden(true)
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 58))
+                        .foregroundStyle(TreasureTheme.tealText)
+                        .accessibilityHidden(true)
 
-                VStack(spacing: 8) {
-                    Text("コピーしました")
-                        .font(.title2.bold())
-                        .foregroundStyle(TreasureTheme.ink)
+                    VStack(spacing: 8) {
+                        Text("コピーしました")
+                            .font(.title2.bold())
+                            .foregroundStyle(TreasureTheme.ink)
 
-                    Text(duplicatedTitle)
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.teal)
+                        Text(duplicatedTitle)
+                            .font(.headline)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(TreasureTheme.ink)
+                    }
                 }
+                .treasureCompactCard()
 
                 VStack(alignment: .leading, spacing: 10) {
                     Label(
@@ -127,20 +130,24 @@ struct ProtectedHuntActionView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .treasureCard()
             } else if let operationError {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(TreasureTheme.coralText)
-                    .accessibilityHidden(true)
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(TreasureTheme.coralText)
+                        .accessibilityHidden(true)
 
-                Text(operationError)
-                    .font(.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(TreasureTheme.ink)
+                    Text(operationError)
+                        .font(.body)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(TreasureTheme.ink)
 
-                Button("もう一度ためす", action: duplicateHunt)
-                    .buttonStyle(.borderedProminent)
+                    Button("もう一度ためす", action: duplicateHunt)
+                        .buttonStyle(.borderedProminent)
+                }
+                .treasureCompactCard()
             } else {
                 ProgressView("コピーしています…")
+                    .treasureCompactCard()
             }
 
             Spacer()
@@ -195,7 +202,7 @@ private struct HuntShareContent: View {
 
                     Image(systemName: "square.and.arrow.up.fill")
                         .font(.system(size: 36))
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                 }
                 .frame(width: 84, height: 84)
                 .accessibilityHidden(true)
@@ -209,8 +216,9 @@ private struct HuntShareContent: View {
                     Text("写真を含む宝探しを、AirDropやメッセージで家族へ送れます。")
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                 }
+                .treasureCompactCard()
 
                 VStack(alignment: .leading, spacing: 12) {
                     Label(
@@ -248,13 +256,16 @@ private struct HuntShareContent: View {
                     }
                     .buttonStyle(TreasurePrimaryButtonStyle())
                 } else if let preparationError {
-                    Text(preparationError)
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.coralText)
+                    VStack(spacing: 12) {
+                        Text(preparationError)
+                            .font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(TreasureTheme.coralText)
 
-                    Button("もう一度ためす", action: prepareShareFile)
-                        .buttonStyle(.bordered)
+                        Button("もう一度ためす", action: prepareShareFile)
+                            .buttonStyle(.bordered)
+                    }
+                    .treasureCompactCard()
                 } else {
                     ProgressView("共有ファイルを準備しています…")
                 }
@@ -265,6 +276,7 @@ private struct HuntShareContent: View {
                 )
                 .font(.footnote)
                 .foregroundStyle(TreasureTheme.coralText)
+                .treasureCompactCard()
             }
             .padding(24)
         }

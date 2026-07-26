@@ -96,15 +96,18 @@ struct HuntPreparationView: View {
                                 .font(.caption.weight(.semibold))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(TreasureTheme.coralText)
+                                .treasureCompactCard()
                         } else if !allVerificationToolsArePrepared {
                             Text("QRコードの表示・共有とNFCタグへの書き込みを完了してください")
                                 .font(.caption.weight(.semibold))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(TreasureTheme.coralText)
+                                .treasureCompactCard()
                         } else if !allTreasuresAreHidden {
                             Text("すべての宝を隠したら次へ進めます")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(TreasureTheme.secondaryText)
+                                .treasureCompactCard()
                         }
                     }
                 }
@@ -147,7 +150,7 @@ struct HuntPreparationView: View {
         VStack(spacing: 8) {
             Image(systemName: "shippingbox.fill")
                 .font(.system(size: 38))
-                .foregroundStyle(TreasureTheme.coralText)
+                .foregroundStyle(TreasureTheme.tealText)
                 .accessibilityHidden(true)
 
             Text("順番に宝を準備しよう")
@@ -157,8 +160,9 @@ struct HuntPreparationView: View {
             Text("QRコードやNFCタグを用意して、\n実物の宝をヒントの場所へ隠してください。")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TreasureTheme.secondaryText)
         }
+        .treasureCompactCard()
     }
 
     private var progress: some View {
@@ -178,7 +182,10 @@ struct HuntPreparationView: View {
             .tint(allTreasuresAreHidden ? TreasureTheme.gold : TreasureTheme.teal)
         }
         .padding(16)
-        .background(.white.opacity(0.88), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            TreasureTheme.cardSurface,
+            in: RoundedRectangle(cornerRadius: 16)
+        )
     }
 
     private func toggleHidden(_ stage: TreasureStage) {
@@ -239,7 +246,9 @@ private struct PreparationStageCard: View {
                         .fill(isLast ? TreasureTheme.gold : TreasureTheme.teal.opacity(0.15))
 
                     Image(systemName: isLast ? "gift.fill" : "\(number).circle.fill")
-                        .foregroundStyle(isLast ? .white : TreasureTheme.teal)
+                        .foregroundStyle(
+                            isLast ? .white : TreasureTheme.tealText
+                        )
                 }
                 .frame(width: 42, height: 42)
                 .accessibilityHidden(true)
@@ -251,21 +260,25 @@ private struct PreparationStageCard: View {
 
                     Label(stage.verification.title, systemImage: stage.verification.systemImage)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                 }
 
                 Spacer()
 
                 Image(systemName: isHidden ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundStyle(isHidden ? TreasureTheme.teal : .secondary)
+                    .foregroundStyle(
+                        isHidden
+                            ? TreasureTheme.tealText
+                            : TreasureTheme.secondaryText
+                    )
                     .accessibilityLabel(isHidden ? "隠しました" : "まだ隠していません")
             }
 
             VStack(alignment: .leading, spacing: 5) {
                 Text("ヒント")
                     .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
 
                 Text(stage.hint)
                     .font(.subheadline.weight(.semibold))
@@ -279,7 +292,7 @@ private struct PreparationStageCard: View {
                 if let extraHint = stage.availableExtraHint {
                     Text("おたすけヒント")
                         .font(.caption.bold())
-                        .foregroundStyle(TreasureTheme.coralText)
+                        .foregroundStyle(TreasureTheme.goldText)
                         .padding(.top, 5)
 
                     Text(extraHint)
@@ -298,7 +311,9 @@ private struct PreparationStageCard: View {
                     systemImage: isHidden ? "checkmark.circle.fill" : "shippingbox.fill"
                 )
                 .font(.headline)
-                .foregroundStyle(isHidden ? TreasureTheme.teal : TreasureTheme.ink)
+                .foregroundStyle(
+                    isHidden ? TreasureTheme.tealText : TreasureTheme.ink
+                )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
                 .background(
@@ -331,7 +346,7 @@ private struct PreparationStageCard: View {
 
                 Text(stage.passphrase)
                     .font(.body.monospaced().weight(.semibold))
-                    .foregroundStyle(TreasureTheme.coralText)
+                    .foregroundStyle(TreasureTheme.ink)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(TreasureTheme.coral.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
@@ -382,7 +397,7 @@ private struct PreparationStageCard: View {
                     if isNFCWritten {
                         Label("この宝のデータを書き込み済み", systemImage: "checkmark.circle.fill")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(TreasureTheme.teal)
+                            .foregroundStyle(TreasureTheme.tealText)
                     }
 
                     NFCReaderControl(
@@ -486,6 +501,10 @@ private struct VerificationTestStatus: View {
             systemImage: isTested ? "checkmark.seal.fill" : "info.circle"
         )
         .font(.caption.weight(.semibold))
-        .foregroundStyle(isTested ? TreasureTheme.teal : .secondary)
+        .foregroundStyle(
+            isTested
+                ? TreasureTheme.tealText
+                : TreasureTheme.secondaryText
+        )
     }
 }

@@ -40,7 +40,7 @@ struct HintPhotoEditor: View {
                     ProgressView()
                     Text("写真を準備しています…")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                 }
             }
 
@@ -72,6 +72,7 @@ struct HintPhotoEditor: View {
                     } label: {
                         Label("削除", systemImage: "trash")
                     }
+                    .tint(TreasureTheme.coralText)
                 }
             }
             .buttonStyle(.bordered)

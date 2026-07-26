@@ -56,8 +56,9 @@ struct QRCodePreparationView: View {
                         Text("印刷するか、別の端末へ送って\n宝といっしょに置いてください。")
                             .font(.subheadline)
                             .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TreasureTheme.secondaryText)
                     }
+                    .treasureCompactCard()
 
                     if let qrCodeImage {
                         Image(uiImage: qrCodeImage)
@@ -90,6 +91,7 @@ struct QRCodePreparationView: View {
                             .buttonStyle(.bordered)
                             .tint(isPrepared ? TreasureTheme.teal : TreasureTheme.ink)
                             .disabled(isPrepared)
+                            .treasureCompactCard()
                         }
                     } else {
                         ContentUnavailableView(
@@ -97,6 +99,7 @@ struct QRCodePreparationView: View {
                             systemImage: "qrcode",
                             description: Text("画面を閉じて、もう一度ためしてください。")
                         )
+                        .treasureCompactCard()
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -106,7 +109,7 @@ struct QRCodePreparationView: View {
 
                         Text("共有メニューから「プリント」または「写真に保存」を選びます。写真に保存した場合は、別の端末に表示する必要があります。")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TreasureTheme.secondaryText)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .treasureCard()
@@ -154,6 +157,8 @@ struct QRCodeScannerView: View {
                         } description: {
                             Text("設定でカメラを許可するか、対応するiPhoneでためしてください。")
                         }
+                        .treasureCompactCard()
+                        .padding(24)
                     }
                 }
             }
@@ -203,7 +208,10 @@ struct QRCodeScannerView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
                     .padding()
-                    .background(TreasureTheme.coral.opacity(0.94), in: RoundedRectangle(cornerRadius: 16))
+                    .background(
+                        TreasureTheme.dangerBackground,
+                        in: RoundedRectangle(cornerRadius: 16)
+                    )
                     .padding(.horizontal, 20)
             } else {
                 Text("QRコードを読み取ると、自動で次へ進みます")

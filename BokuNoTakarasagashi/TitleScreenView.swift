@@ -171,7 +171,9 @@ private struct TitleSecondaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
             .background(
-                .ultraThinMaterial,
+                Color.black.opacity(
+                    TreasureTheme.titleSecondaryScrimOpacity
+                ),
                 in: RoundedRectangle(cornerRadius: 17)
             )
             .overlay {

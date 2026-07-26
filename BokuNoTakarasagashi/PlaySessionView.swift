@@ -259,6 +259,8 @@ struct PlaySessionView: View {
                 Button("おうちの人", action: { isShowingParentGate = true })
                     .buttonStyle(.borderedProminent)
             }
+            .treasureCompactCard()
+            .padding(20)
         }
     }
 
@@ -284,12 +286,13 @@ struct PlaySessionView: View {
                             .font(.headline)
                     }
                     .buttonStyle(.bordered)
-                    .tint(TreasureTheme.coral)
+                    .tint(TreasureTheme.teal)
 
                     Text("分からないときに使ってね")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                 }
+                .treasureCompactCard()
             }
         }
     }
@@ -302,7 +305,7 @@ struct PlaySessionView: View {
                 Text("\(hunt.currentStageIndex + 1) / \(hunt.sortedStages.count)")
             }
             .font(.caption.bold())
-            .foregroundStyle(.secondary)
+            .foregroundStyle(TreasureTheme.secondaryText)
 
             ProgressView(
                 value: Double(hunt.currentStageIndex + 1),
@@ -310,6 +313,7 @@ struct PlaySessionView: View {
             )
             .tint(currentStageIsLast ? TreasureTheme.gold : TreasureTheme.teal)
         }
+        .treasureCompactCard()
     }
 
     @ViewBuilder
@@ -326,8 +330,9 @@ struct PlaySessionView: View {
 
                 Text("宝を見つけたら押してね")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
+            .treasureCompactCard()
 
         case .passphrase:
             VStack(spacing: 12) {
@@ -383,8 +388,9 @@ struct PlaySessionView: View {
                     Text("宝といっしょにあるQRコードをカメラで写してね")
                         .font(.caption)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                 }
+                .treasureCompactCard()
             } else {
                 unavailableVerificationCard(title: "QRコードを読み取れません")
             }
@@ -395,6 +401,7 @@ struct PlaySessionView: View {
                     expectedPayload: stage.verificationPayload,
                     onMatch: revealDiscovery
                 )
+                .treasureCompactCard()
             } else {
                 VStack(spacing: 10) {
                     Label(
@@ -407,7 +414,7 @@ struct PlaySessionView: View {
                     Text("おうちの人に渡して、発見方法を変更してもらってください。")
                         .font(.caption)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
 
                     Button {
                         isShowingParentGate = true
@@ -538,7 +545,7 @@ struct PlaySessionView: View {
             Text("おうちの人に渡して、発見方法を変更してもらってください。")
                 .font(.caption)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TreasureTheme.secondaryText)
 
             Button {
                 isShowingParentGate = true
@@ -715,7 +722,7 @@ private struct SafetyCheckView: View {
 
                         Image(systemName: "exclamationmark.shield.fill")
                             .font(.system(size: 42))
-                            .foregroundStyle(TreasureTheme.teal)
+                            .foregroundStyle(TreasureTheme.tealText)
                     }
                     .frame(width: 88, height: 88)
                     .accessibilityHidden(true)
@@ -727,8 +734,9 @@ private struct SafetyCheckView: View {
 
                         Text("スタートする前に、しかけた場所を\nもう一度確認してください。")
                             .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TreasureTheme.secondaryText)
                     }
+                    .treasureCompactCard()
 
                     VStack(spacing: 14) {
                         SafetyRow(
@@ -757,7 +765,9 @@ private struct SafetyCheckView: View {
                             Image(systemName: isConfirmed ? "checkmark.circle.fill" : "circle")
                                 .font(.title2)
                                 .foregroundStyle(
-                                    isConfirmed ? TreasureTheme.teal : .secondary
+                                    isConfirmed
+                                        ? TreasureTheme.tealText
+                                        : TreasureTheme.secondaryText
                                 )
 
                             Text("安全を確認しました")
@@ -767,7 +777,10 @@ private struct SafetyCheckView: View {
                             Spacer()
                         }
                         .padding(16)
-                        .background(.white.opacity(0.88), in: RoundedRectangle(cornerRadius: 16))
+                        .background(
+                            TreasureTheme.cardSurface,
+                            in: RoundedRectangle(cornerRadius: 16)
+                        )
                     }
                     .buttonStyle(.plain)
 
@@ -837,8 +850,9 @@ private struct HandoffView: View {
                             .foregroundStyle(TreasureTheme.ink)
 
                         Text("ここから先は、さがす人の画面です。")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TreasureTheme.secondaryText)
                     }
+                    .treasureCompactCard()
 
                     VStack(spacing: 14) {
                         Text(hunt.title)
@@ -850,7 +864,7 @@ private struct HandoffView: View {
                             Text(hunt.openingMessage)
                                 .font(.body)
                                 .multilineTextAlignment(.center)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(TreasureTheme.secondaryText)
                         }
 
                         Label(
@@ -860,7 +874,7 @@ private struct HandoffView: View {
                             systemImage: "gift.fill"
                         )
                         .font(.subheadline.bold())
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                     }
                     .frame(maxWidth: .infinity)
                     .treasureCard()
@@ -876,6 +890,7 @@ private struct HandoffView: View {
                             .multilineTextAlignment(.center)
                             .foregroundStyle(TreasureTheme.ink)
                     }
+                    .treasureCompactCard()
 
                     Button(
                         isResuming ? "つづきをスタート" : "冒険スタート",
@@ -1051,7 +1066,7 @@ private struct CompletionView: View {
 
                     Text("ぜんぶの宝を見つけました")
                         .font(.headline)
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.ink)
                 }
 
                 VStack(spacing: 15) {
@@ -1064,7 +1079,7 @@ private struct CompletionView: View {
 
                     Label("宝 \(hunt.stages.count)こ 発見", systemImage: "gift.fill")
                         .font(.subheadline.bold())
-                        .foregroundStyle(TreasureTheme.coralText)
+                        .foregroundStyle(TreasureTheme.goldText)
 
                     if hunt.usedExtraHintCount > 0 {
                         Label(
@@ -1072,7 +1087,7 @@ private struct CompletionView: View {
                             systemImage: "lightbulb.fill"
                         )
                         .font(.subheadline.bold())
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                     }
                 }
                 .frame(maxWidth: .infinity)

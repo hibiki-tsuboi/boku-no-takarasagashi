@@ -125,8 +125,9 @@ struct HuntCreationFlowView: View {
 
                                 Text("テンプレートのヒントは、家に合わせて自由に変えられます。")
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(TreasureTheme.secondaryText)
                             }
+                            .treasureCompactCard()
 
                             Button {
                                 beginEditing(with: nil)
@@ -163,7 +164,7 @@ struct HuntCreationFlowView: View {
                             )
                             .font(.footnote)
                             .foregroundStyle(TreasureTheme.coralText)
-                            .padding(.top, 4)
+                            .treasureCompactCard()
                         }
                         .padding(20)
                     }
@@ -201,7 +202,7 @@ private struct TemplateCard: View {
 
                 Image(systemName: systemImage)
                     .font(.title2)
-                    .foregroundStyle(TreasureTheme.teal)
+                    .foregroundStyle(TreasureTheme.tealText)
             }
             .frame(width: 54, height: 54)
             .accessibilityHidden(true)
@@ -213,7 +214,7 @@ private struct TemplateCard: View {
 
                 Text(summary)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
                     .multilineTextAlignment(.leading)
             }
 
@@ -221,7 +222,7 @@ private struct TemplateCard: View {
 
             Image(systemName: "chevron.right")
                 .font(.caption.bold())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TreasureTheme.secondaryText)
         }
         .treasureCard()
         .contentShape(Rectangle())

@@ -71,9 +71,10 @@ struct AdventureSelectionView: View {
 
             Text("遊びたい宝探しをえらんでね")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TreasureTheme.secondaryText)
         }
         .frame(maxWidth: .infinity)
+        .treasureCompactCard()
     }
 
     private var emptyState: some View {
@@ -91,7 +92,7 @@ struct AdventureSelectionView: View {
                 Text("おうちの人にiPhoneをわたして、\n宝探しをつくってもらおう。")
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
 
             Button(action: onOpenParent) {
@@ -159,7 +160,7 @@ private struct AdventureCard: View {
                         )
                     }
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
 
                     ProgressView(
                         value: Double(
@@ -222,9 +223,9 @@ private struct AdventureCard: View {
     private var statusTextColor: Color {
         switch hunt.playState {
         case .ready:
-            TreasureTheme.teal
+            TreasureTheme.tealText
         case .inProgress:
-            TreasureTheme.coralText
+            TreasureTheme.ink
         case .completed:
             TreasureTheme.goldText
         }

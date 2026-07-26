@@ -195,21 +195,124 @@ final class LowRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
-    func testTextColorsMeetNormalTextContrast() {
+    func testSemanticTextColorsMeetNormalTextContrast() {
         let textColors = [
-            TreasureTheme.goldTextComponents,
-            TreasureTheme.coralTextComponents,
+            ("ink", TreasureTheme.inkComponents),
+            ("tealText", TreasureTheme.tealTextComponents),
+            ("secondaryText", TreasureTheme.secondaryTextComponents),
+            ("goldText", TreasureTheme.goldTextComponents),
+            ("coralText", TreasureTheme.coralTextComponents),
+        ]
+        let minimumCardSurface = TreasureTheme.whiteComponents.composited(
+            over: TreasureTheme.blackComponents,
+            opacity: TreasureTheme.cardSurfaceOpacity
+        )
+        let backgrounds = [
+            ("white", TreasureTheme.whiteComponents),
+            ("cream", TreasureTheme.creamComponents),
+            ("minimumCardSurface", minimumCardSurface),
         ]
 
-        for textColor in textColors {
-            XCTAssertGreaterThanOrEqual(
-                textColor.contrastRatio(with: TreasureTheme.whiteComponents),
-                4.5
+        for (colorName, textColor) in textColors {
+            for (backgroundName, background) in backgrounds {
+                XCTAssertGreaterThanOrEqual(
+                    textColor.contrastRatio(with: background),
+                    4.5,
+                    "\(colorName) on \(backgroundName)"
+                )
+            }
+        }
+    }
+
+    @MainActor
+    func testAccentTextColorsMeetContrastOnTintedSurfaces() {
+        let baseBackgrounds = [
+            ("white", TreasureTheme.whiteComponents),
+            ("cream", TreasureTheme.creamComponents),
+        ]
+
+        for (backgroundName, background) in baseBackgrounds {
+            for opacity in [0.12, 0.14, 0.16] {
+                let surface = TreasureTheme.tealComponents.composited(
+                    over: background,
+                    opacity: opacity
+                )
+                XCTAssertGreaterThanOrEqual(
+                    TreasureTheme.tealTextComponents.contrastRatio(
+                        with: surface
+                    ),
+                    4.5,
+                    "tealText on teal \(opacity) over \(backgroundName)"
+                )
+            }
+
+            let coralSurface = TreasureTheme.coralComponents.composited(
+                over: background,
+                opacity: 0.10
             )
             XCTAssertGreaterThanOrEqual(
-                textColor.contrastRatio(with: TreasureTheme.creamComponents),
-                4.5
+                TreasureTheme.coralTextComponents.contrastRatio(
+                    with: coralSurface
+                ),
+                4.5,
+                "coralText on coral over \(backgroundName)"
+            )
+
+            let goldSurface = TreasureTheme.goldComponents.composited(
+                over: background,
+                opacity: 0.20
+            )
+            XCTAssertGreaterThanOrEqual(
+                TreasureTheme.goldTextComponents.contrastRatio(
+                    with: goldSurface
+                ),
+                4.5,
+                "goldText on gold over \(backgroundName)"
             )
         }
+    }
+
+    @MainActor
+    func testButtonAndErrorBannerColorsMeetContrast() {
+        let minimumCardSurface = TreasureTheme.whiteComponents.composited(
+            over: TreasureTheme.blackComponents,
+            opacity: TreasureTheme.cardSurfaceOpacity
+        )
+        let brightestTitleSecondarySurface =
+            TreasureTheme.blackComponents.composited(
+                over: TreasureTheme.whiteComponents,
+                opacity: TreasureTheme.titleSecondaryScrimOpacity
+            )
+
+        XCTAssertGreaterThanOrEqual(
+            TreasureTheme.whiteComponents.contrastRatio(
+                with: TreasureTheme.tealComponents
+            ),
+            4.5
+        )
+        XCTAssertGreaterThanOrEqual(
+            TreasureTheme.whiteComponents.contrastRatio(
+                with: TreasureTheme.coralTextComponents
+            ),
+            4.5
+        )
+        XCTAssertGreaterThanOrEqual(
+            TreasureTheme.inkComponents.contrastRatio(
+                with: TreasureTheme.goldComponents
+            ),
+            4.5
+        )
+        XCTAssertGreaterThanOrEqual(
+            TreasureTheme.tealComponents.contrastRatio(
+                with: minimumCardSurface
+            ),
+            4.5
+        )
+        XCTAssertGreaterThanOrEqual(
+            TreasureTheme.whiteComponents.contrastRatio(
+                with: brightestTitleSecondarySurface
+            ),
+            4.5
+        )
     }
 }

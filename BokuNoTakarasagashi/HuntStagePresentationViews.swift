@@ -24,7 +24,9 @@ struct HuntHintCard: View {
 
                 Image(systemName: isLast ? "gift.fill" : "magnifyingglass")
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(isLast ? .white : TreasureTheme.coral)
+                    .foregroundStyle(
+                        isLast ? .white : TreasureTheme.coralText
+                    )
             }
             .frame(width: 82, height: 82)
             .accessibilityHidden(true)
@@ -63,7 +65,7 @@ struct HuntExtraHintCard: View {
         VStack(spacing: 12) {
             Label("おたすけヒント", systemImage: "lightbulb.fill")
                 .font(.headline)
-                .foregroundStyle(TreasureTheme.coralText)
+                .foregroundStyle(TreasureTheme.goldText)
 
             Text(extraHint)
                 .font(.system(.title3, design: .rounded, weight: .semibold))
@@ -79,7 +81,7 @@ struct HuntExtraHintCard: View {
         }
         .padding(18)
         .background(
-            TreasureTheme.gold.opacity(0.18),
+            TreasureTheme.cardSurface,
             in: RoundedRectangle(cornerRadius: 18)
         )
         .overlay {

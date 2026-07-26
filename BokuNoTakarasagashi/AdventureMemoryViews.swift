@@ -68,7 +68,7 @@ struct AdventureMemoryEditorView: View {
                         systemImage: "lock.iphone"
                     )
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -141,7 +141,7 @@ struct AdventureMemoryCard: View {
 
                     Image(systemName: "camera.fill")
                         .font(.title)
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                 }
                 .frame(width: 64, height: 64)
                 .accessibilityHidden(true)
@@ -155,7 +155,7 @@ struct AdventureMemoryCard: View {
                 if let playerName = record.playerName?.memoryTrimmed.nilIfEmpty {
                     Text("\(playerName)さんの宝探し")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                 }
 
                 if let note = record.memoryNote?.memoryTrimmed.nilIfEmpty {
@@ -167,7 +167,7 @@ struct AdventureMemoryCard: View {
                     Text("記念写真や今日のひとことを、冒険のきろくに保存できます。")
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                 }
             }
 
@@ -236,21 +236,22 @@ struct AdventureMemoryDetailView: View {
                                 .minute()
                         )
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                     }
+                    .treasureCompactCard()
 
                     HStack(spacing: 20) {
                         Label(
                             "宝 \(record.treasureCount)こ",
                             systemImage: "gift.fill"
                         )
-                        .foregroundStyle(TreasureTheme.coralText)
+                        .foregroundStyle(TreasureTheme.goldText)
 
                         Label(
                             "おたすけ \(record.extraHintsUsedCount)かい",
                             systemImage: "lightbulb.fill"
                         )
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.tealText)
                     }
                     .font(.subheadline.bold())
                     .frame(maxWidth: .infinity)
@@ -276,12 +277,12 @@ struct AdventureMemoryDetailView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "photo.badge.plus")
                                 .font(.title)
-                                .foregroundStyle(TreasureTheme.teal)
+                                .foregroundStyle(TreasureTheme.tealText)
 
                             Text("この冒険に写真やひとことを追加できます。")
                                 .font(.subheadline)
                                 .multilineTextAlignment(.center)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(TreasureTheme.secondaryText)
                         }
                         .frame(maxWidth: .infinity)
                         .treasureCard()
@@ -385,7 +386,7 @@ private struct MemoryTextCard: View {
         VStack(alignment: .leading, spacing: 9) {
             Label(title, systemImage: systemImage)
                 .font(.headline)
-                .foregroundStyle(TreasureTheme.teal)
+                .foregroundStyle(TreasureTheme.tealText)
 
             Text(text)
                 .font(.body)

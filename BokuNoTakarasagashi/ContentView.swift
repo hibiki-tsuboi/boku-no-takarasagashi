@@ -222,9 +222,10 @@ struct ContentView: View {
 
             Text("家の中が、きょうの冒険になる。")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TreasureTheme.secondaryText)
         }
         .frame(maxWidth: .infinity)
+        .treasureCompactCard()
     }
 
     private var emptyState: some View {
@@ -242,7 +243,7 @@ struct ContentView: View {
                 Text("ヒントと宝を用意したら、\niPhoneをさがす人に渡してスタート。")
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
 
             Button {
@@ -266,11 +267,12 @@ struct ContentView: View {
 
                 Text("\(hunts.count)こ")
                     .font(.caption.bold())
-                    .foregroundStyle(TreasureTheme.teal)
+                    .foregroundStyle(TreasureTheme.tealText)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(TreasureTheme.teal.opacity(0.12), in: Capsule())
             }
+            .treasureCompactCard()
 
             ForEach(hunts) { hunt in
                 HuntCard(
@@ -502,7 +504,7 @@ private struct HuntCard: View {
                         Text("\(min(hunt.currentStageIndex + 1, hunt.stages.count)) / \(hunt.stages.count)")
                     }
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
 
                     ProgressView(
                         value: Double(min(hunt.currentStageIndex, hunt.stages.count)),
@@ -556,9 +558,9 @@ private struct HuntCard: View {
     private var statusTextColor: Color {
         switch hunt.playState {
         case .ready:
-            TreasureTheme.teal
+            TreasureTheme.tealText
         case .inProgress:
-            TreasureTheme.coralText
+            TreasureTheme.ink
         case .completed:
             TreasureTheme.goldText
         }

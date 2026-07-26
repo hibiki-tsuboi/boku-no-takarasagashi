@@ -42,6 +42,8 @@ struct HuntPreviewView: View {
                     } description: {
                         Text("宝を追加してからプレビューしてください。")
                     }
+                    .treasureCompactCard()
+                    .padding(20)
                 }
             }
 
@@ -130,7 +132,7 @@ struct HuntPreviewView: View {
         HStack(spacing: 12) {
             Image(systemName: "eye.fill")
                 .font(.title3)
-                .foregroundStyle(TreasureTheme.teal)
+                .foregroundStyle(TreasureTheme.tealText)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("保護者プレビュー")
@@ -139,13 +141,16 @@ struct HuntPreviewView: View {
 
                 Text("ここでの操作は進み具合に保存されません。")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TreasureTheme.secondaryText)
             }
 
             Spacer()
         }
         .padding(14)
-        .background(.white.opacity(0.88), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            TreasureTheme.cardSurface,
+            in: RoundedRectangle(cornerRadius: 16)
+        )
     }
 
     private var progressHeader: some View {
@@ -156,7 +161,7 @@ struct HuntPreviewView: View {
                 Text("\(stageIndex + 1) / \(stages.count)")
             }
             .font(.caption.bold())
-            .foregroundStyle(.secondary)
+            .foregroundStyle(TreasureTheme.secondaryText)
 
             ProgressView(
                 value: Double(stageIndex + 1),
@@ -164,6 +169,7 @@ struct HuntPreviewView: View {
             )
             .tint(currentStageIsLast ? TreasureTheme.gold : TreasureTheme.teal)
         }
+        .treasureCompactCard()
     }
 
     @ViewBuilder
@@ -200,12 +206,13 @@ struct HuntPreviewView: View {
                         .font(.headline)
                     }
                     .buttonStyle(.bordered)
-                    .tint(TreasureTheme.coral)
+                    .tint(TreasureTheme.teal)
 
                     Text("本番と同じように、おたすけヒントを確認できます")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TreasureTheme.secondaryText)
                 }
+                .treasureCompactCard()
             }
         }
     }
@@ -222,6 +229,7 @@ struct HuntPreviewView: View {
 
                 previewOperationNote
             }
+            .treasureCompactCard()
 
         case .passphrase:
             VStack(spacing: 12) {
@@ -282,6 +290,7 @@ struct HuntPreviewView: View {
 
                 previewOperationNote
             }
+            .treasureCompactCard()
 
         case .nfc:
             VStack(spacing: 10) {
@@ -292,6 +301,7 @@ struct HuntPreviewView: View {
 
                 previewOperationNote
             }
+            .treasureCompactCard()
         }
     }
 
@@ -299,7 +309,7 @@ struct HuntPreviewView: View {
         Text("発見演出は表示されますが、本番の進み具合は変わりません。")
             .font(.caption)
             .multilineTextAlignment(.center)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(TreasureTheme.secondaryText)
     }
 
     private var stageNavigation: some View {
@@ -330,6 +340,7 @@ struct HuntPreviewView: View {
             .buttonStyle(.borderedProminent)
         }
         .tint(TreasureTheme.teal)
+        .treasureCompactCard()
     }
 
     private var completionPreview: some View {
@@ -381,7 +392,7 @@ struct HuntPreviewView: View {
 
                     Text("クリア画面のプレビュー")
                         .font(.headline)
-                        .foregroundStyle(TreasureTheme.teal)
+                        .foregroundStyle(TreasureTheme.ink)
                 }
 
                 VStack(spacing: 14) {
@@ -397,7 +408,7 @@ struct HuntPreviewView: View {
                         systemImage: "gift.fill"
                     )
                     .font(.subheadline.bold())
-                    .foregroundStyle(TreasureTheme.coralText)
+                    .foregroundStyle(TreasureTheme.goldText)
                 }
                 .frame(maxWidth: .infinity)
                 .treasureCard()

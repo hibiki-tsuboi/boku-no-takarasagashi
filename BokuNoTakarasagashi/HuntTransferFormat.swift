@@ -82,7 +82,8 @@ struct HuntTransferPackage: Codable, Equatable {
         for stage in stages {
             guard Self.isValid(stage.hint, maximumLength: 1_000),
                   stage.extraHint?.count ?? 0 <= 1_000,
-                  stage.discoveryMessage.count <= 1_000,
+                  stage.discoveryMessage.count
+                    <= TreasureContentLimits.maximumDiscoveryMessageLength,
                   stage.verificationRawValue.count <= 40,
                   stage.passphrase.count <= 200 else {
                 throw HuntTransferError.invalidContent

@@ -48,6 +48,10 @@ enum HuntPlayState: String {
     case completed
 }
 
+enum TreasureContentLimits {
+    static let maximumDiscoveryMessageLength = 1_000
+}
+
 @Model
 final class TreasureHunt {
     var id: UUID

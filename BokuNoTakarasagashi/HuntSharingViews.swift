@@ -158,6 +158,13 @@ struct ProtectedHuntActionView: View {
     private func duplicateHunt() {
         operationError = nil
 
+        let hasUnavailableNFC = !NFCSessionController.isAvailable
+            && request.hunt.stages.contains { $0.verification == .nfc }
+        guard !hasUnavailableNFC else {
+            operationError = "この端末ではNFCを利用できないため複製できません。先に発見方法を変更してください。"
+            return
+        }
+
         do {
             let copy = try HuntTransferService.duplicate(
                 request.hunt,
@@ -345,6 +352,19 @@ struct HuntImportView: View {
                     }
                 }
 
+                if containsUnavailableNFC {
+                    Section {
+                        Label(
+                            "この端末ではNFCを利用できないため、この宝探しは読み込めません。NFC対応のiPhoneで読み込むか、送信元で発見方法を変更してください。",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(TreasureTheme.coral)
+                    } header: {
+                        Text("NFCを利用できません")
+                    }
+                }
+
                 Section {
                     Label(
                         "道路・水辺・高い場所などがヒントに含まれていないか、読み込み後に必ず確認してください。",
@@ -370,7 +390,7 @@ struct HuntImportView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("読み込む", action: importHunt)
                         .fontWeight(.semibold)
-                        .disabled(parentPIN.count != 4)
+                        .disabled(parentPIN.count != 4 || containsUnavailableNFC)
                 }
             }
             .alert("読み込めませんでした", isPresented: errorIsPresented) {
@@ -393,6 +413,13 @@ struct HuntImportView: View {
         }
     }
 
+    private var containsUnavailableNFC: Bool {
+        !NFCSessionController.isAvailable
+            && package.stages.contains {
+                $0.verificationRawValue == TreasureVerification.nfc.rawValue
+            }
+    }
+
     private var errorIsPresented: Binding<Bool> {
         Binding(
             get: { importError != nil },
@@ -406,6 +433,10 @@ struct HuntImportView: View {
 
     private func importHunt() {
         guard parentPIN.count == 4 else { return }
+        guard !containsUnavailableNFC else {
+            importError = "この端末ではNFCを利用できません。発見方法を変更してから読み込んでください。"
+            return
+        }
 
         do {
             _ = try HuntTransferService.importHunt(

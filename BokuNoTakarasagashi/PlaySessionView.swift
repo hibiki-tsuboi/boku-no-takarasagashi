@@ -12,6 +12,7 @@ struct PlaySessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
+    @Query private var hunts: [TreasureHunt]
 
     @State private var phase: PlayPhase
     @State private var safetyIsConfirmed = false
@@ -22,26 +23,39 @@ struct PlaySessionView: View {
     @State private var passphrase = ""
     @State private var answerError: String?
     @State private var persistenceError: String?
+    @State private var sessionError: String?
     @State private var completedRecord: AdventureRecord?
     @State private var musicRequestID: UUID?
+    @FocusState private var passphraseIsFocused: Bool
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
+    private let phaseAfterParentAuthorization: PlayPhase
+
     init(
         hunt: TreasureHunt,
-        startsInPreparation: Bool = false
+        startsInPreparation: Bool = false,
+        parentIsAuthorized: Bool = false
     ) {
         self.hunt = hunt
 
-        let initialPhase: PlayPhase
+        let authorizedPhase: PlayPhase
         if startsInPreparation {
-            initialPhase = .preparation
-        } else if hunt.isChildModeLocked {
-            initialPhase = hunt.playState == .completed ? .completed : .playing
+            authorizedPhase = .preparation
         } else if hunt.playState == .inProgress {
-            initialPhase = .handoff
+            authorizedPhase = .handoff
         } else {
-            initialPhase = .preparation
+            authorizedPhase = .preparation
+        }
+        phaseAfterParentAuthorization = authorizedPhase
+
+        let initialPhase: PlayPhase
+        if hunt.isChildModeLocked {
+            initialPhase = hunt.playState == .completed ? .completed : .playing
+        } else if parentIsAuthorized {
+            initialPhase = authorizedPhase
+        } else {
+            initialPhase = .parentAuthorization
         }
         _phase = State(initialValue: initialPhase)
     }
@@ -50,6 +64,13 @@ struct PlaySessionView: View {
         ZStack {
             TreasureBackground(style: backgroundStyle) {
                 switch phase {
+                case .parentAuthorization:
+                    ParentPINGateView(
+                        expectedDigest: hunt.parentPINDigest,
+                        onCancel: { dismiss() },
+                        onUnlock: authorizeParent
+                    )
+
                 case .preparation:
                     HuntPreparationView(
                         hunt: hunt,
@@ -137,6 +158,11 @@ struct PlaySessionView: View {
         } message: {
             Text(persistenceError ?? "もう一度ためしてください。")
         }
+        .alert("冒険を開始できません", isPresented: sessionErrorIsPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(sessionError ?? "おうちの人に確認してください。")
+        }
         .sensoryFeedback(.success, trigger: isShowingDiscovery)
         .onAppear {
             loadCompletionRecordIfNeeded()
@@ -157,6 +183,8 @@ struct PlaySessionView: View {
 
     private var backgroundStyle: TreasureBackgroundStyle {
         switch phase {
+        case .parentAuthorization:
+            .security
         case .preparation:
             .preparation
         case .safety, .handoff:
@@ -313,6 +341,7 @@ struct PlaySessionView: View {
                             answerError = nil
                         }
                         .onSubmit(checkPassphrase)
+                        .focused($passphraseIsFocused)
 
                     if let answerError {
                         Text(answerError)
@@ -343,10 +372,34 @@ struct PlaySessionView: View {
             }
 
         case .nfc:
-            NFCReaderControl(
-                expectedPayload: stage.verificationPayload,
-                onMatch: revealDiscovery
-            )
+            if NFCSessionController.isAvailable {
+                NFCReaderControl(
+                    expectedPayload: stage.verificationPayload,
+                    onMatch: revealDiscovery
+                )
+            } else {
+                VStack(spacing: 10) {
+                    Label(
+                        "この端末ではNFCを読み取れません",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.subheadline.bold())
+                    .foregroundStyle(TreasureTheme.coral)
+
+                    Text("おうちの人に渡して、発見方法を変更してもらってください。")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+
+                    Button {
+                        isShowingParentGate = true
+                    } label: {
+                        Label("おうちの人にわたす", systemImage: "lock.fill")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .treasureCard()
+            }
         }
     }
 
@@ -390,6 +443,17 @@ struct PlaySessionView: View {
         )
     }
 
+    private var sessionErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { sessionError != nil },
+            set: { isPresented in
+                if !isPresented {
+                    sessionError = nil
+                }
+            }
+        )
+    }
+
     private func beginMusicRequest() {
         guard musicRequestID == nil else {
             updateMusicRequest(backgroundMusicTrack)
@@ -413,12 +477,26 @@ struct PlaySessionView: View {
     }
 
     private func startPlaying() {
+        guard !hunt.sortedStages.contains(where: {
+            $0.verification == .nfc && !NFCSessionController.isAvailable
+        }) else {
+            sessionError = "この端末ではNFCを使えません。発見方法をQRコードなどへ変更してください。"
+            return
+        }
+
+        guard hunts.allSatisfy({
+            $0.id == hunt.id || !$0.isChildModeLocked
+        }) else {
+            sessionError = "別の冒険がプレイ中です。先にその冒険を終了してください。"
+            return
+        }
+
         if hunt.playState == .inProgress {
             hunt.resumeGame()
         } else {
             hunt.startNewGame()
         }
-        saveProgress()
+        guard saveProgress() else { return }
 
         withAnimation(.easeInOut) {
             phase = .playing
@@ -437,6 +515,7 @@ struct PlaySessionView: View {
 
     private func revealDiscovery() {
         answerError = nil
+        passphraseIsFocused = false
         speechController.stop()
         soundPlayer.playDiscovery()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
@@ -453,23 +532,28 @@ struct PlaySessionView: View {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
             hunt.revealExtraHint(for: stage.id)
         }
-        saveProgress()
+        _ = saveProgress()
     }
 
     private func continueAfterDiscovery() {
         let wasLastStage = currentStageIsLast
+        var newRecord: AdventureRecord?
 
         if wasLastStage {
             guard hunt.playState != .completed else { return }
             let record = AdventureRecord(hunt: hunt)
             modelContext.insert(record)
-            completedRecord = record
-            soundPlayer.playCompletion()
+            newRecord = record
             hunt.completeGame()
         } else {
             hunt.advanceToNextStage()
         }
-        saveProgress()
+        guard saveProgress() else { return }
+
+        if let newRecord {
+            completedRecord = newRecord
+            soundPlayer.playCompletion()
+        }
 
         passphrase = ""
         answerError = nil
@@ -485,7 +569,10 @@ struct PlaySessionView: View {
 
     private func returnToParent() {
         hunt.unlockChildMode()
-        saveProgress()
+        guard saveProgress() else {
+            isShowingParentGate = false
+            return
+        }
         isShowingParentGate = false
         dismiss()
     }
@@ -508,24 +595,36 @@ struct PlaySessionView: View {
             } else {
                 let record = AdventureRecord(hunt: hunt)
                 modelContext.insert(record)
+                guard saveProgress() else { return }
                 completedRecord = record
-                try modelContext.save()
             }
         } catch {
+            modelContext.rollback()
             persistenceError = error.localizedDescription
         }
     }
 
-    private func saveProgress() {
+    private func authorizeParent() {
+        withAnimation(.easeInOut) {
+            phase = phaseAfterParentAuthorization
+        }
+    }
+
+    @discardableResult
+    private func saveProgress() -> Bool {
         do {
             try modelContext.save()
+            return true
         } catch {
+            modelContext.rollback()
             persistenceError = error.localizedDescription
+            return false
         }
     }
 }
 
 private enum PlayPhase {
+    case parentAuthorization
     case preparation
     case safety
     case handoff
@@ -765,44 +864,67 @@ struct DiscoveryOverlay: View {
     let onContinue: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.opacity(0.38)
+                    .ignoresSafeArea()
 
-            VStack(spacing: 20) {
-                ZStack {
-                    Circle()
-                        .fill(isLast ? TreasureTheme.gold : TreasureTheme.coral)
-                        .shadow(
-                            color: (isLast ? TreasureTheme.gold : TreasureTheme.coral).opacity(0.35),
-                            radius: 18,
-                            y: 8
-                        )
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            ZStack {
+                                Circle()
+                                    .fill(isLast ? TreasureTheme.gold : TreasureTheme.coral)
+                                    .shadow(
+                                        color: (isLast ? TreasureTheme.gold : TreasureTheme.coral)
+                                            .opacity(0.35),
+                                        radius: 18,
+                                        y: 8
+                                    )
 
-                    Image(systemName: isLast ? "gift.fill" : "checkmark")
-                        .font(.system(size: 42, weight: .heavy))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 94, height: 94)
-                .accessibilityHidden(true)
+                                Image(systemName: isLast ? "gift.fill" : "checkmark")
+                                    .font(.system(size: 42, weight: .heavy))
+                                    .foregroundStyle(.white)
+                            }
+                            .frame(width: 94, height: 94)
+                            .accessibilityHidden(true)
 
-                Text("みつけた！")
-                    .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                    .foregroundStyle(TreasureTheme.ink)
+                            Text("みつけた！")
+                                .font(.system(.largeTitle, design: .rounded, weight: .heavy))
+                                .foregroundStyle(TreasureTheme.ink)
 
-                if !message.isEmpty {
-                    Text(message)
-                        .font(.title3.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.ink)
-                }
+                            if !message.isEmpty {
+                                Text(message)
+                                    .font(.title3.weight(.semibold))
+                                    .multilineTextAlignment(.center)
+                                    .foregroundStyle(TreasureTheme.ink)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .padding(20)
+                    }
 
-                Button(isLast ? "宝箱をあける" : "つぎのヒント", action: onContinue)
+                    Divider()
+
+                    Button(
+                        isLast ? "宝箱をあける" : "つぎのヒント",
+                        action: onContinue
+                    )
                     .buttonStyle(TreasurePrimaryButtonStyle())
+                    .padding(20)
+                }
+                .frame(
+                    maxWidth: 360,
+                    maxHeight: max(proxy.size.height - 48, 1)
+                )
+                .background(.white.opacity(0.96), in: RoundedRectangle(cornerRadius: 24))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(.white.opacity(0.8), lineWidth: 1)
+                }
+                .shadow(color: TreasureTheme.ink.opacity(0.15), radius: 18, y: 8)
+                .padding(24)
             }
-            .frame(maxWidth: 360)
-            .treasureCard()
-            .padding(24)
         }
     }
 }

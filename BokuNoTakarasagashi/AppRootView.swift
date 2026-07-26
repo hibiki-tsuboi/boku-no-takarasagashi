@@ -15,6 +15,7 @@ struct AppRootView: View {
     @State private var destination = AppDestination.title
     @State private var playingHunt: TreasureHunt?
     @State private var isShowingOpeningVideo: Bool
+    @State private var hasResolvedInitialSession = false
     @StateObject private var musicCoordinator = BackgroundMusicCoordinator()
 
     init(automaticallyShowsOpening: Bool = true) {
@@ -25,29 +26,49 @@ struct AppRootView: View {
 
     var body: some View {
         ZStack {
-            destinationContent
-                .id(destination)
-                .transition(.opacity)
-
-            if isShowingOpeningVideo {
-                OpeningVideoView(onFinished: finishOpeningVideo)
+            if hasResolvedInitialSession {
+                destinationContent
+                    .id(destination)
                     .transition(.opacity)
-                    .zIndex(10)
+
+                if isShowingOpeningVideo {
+                    OpeningVideoView(onFinished: finishOpeningVideo)
+                        .transition(.opacity)
+                        .zIndex(10)
+                }
+            } else {
+                TreasureBackgroundArtwork(style: .adventureSelection)
             }
         }
         .animation(.easeInOut(duration: 0.32), value: destination)
         .animation(.easeInOut(duration: 0.32), value: isShowingOpeningVideo)
         .environmentObject(musicCoordinator)
         .onAppear {
+            resumeLockedSessionIfNeeded()
+            hasResolvedInitialSession = true
             updateMusic()
         }
         .onChange(of: backgroundMusicTrack) {
             updateMusic()
         }
-        .onChange(of: scenePhase) {
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active, destination != .parent {
+                resumeLockedSessionIfNeeded()
+            }
             updateMusic()
         }
-        .fullScreenCover(item: $playingHunt) { hunt in
+        .onChange(of: playingHunt?.id) {
+            updateMusic()
+        }
+        .onChange(of: lockedHunt?.id) { _, lockedHuntID in
+            if lockedHuntID != nil, destination != .parent {
+                resumeLockedSessionIfNeeded()
+            }
+        }
+        .fullScreenCover(
+            item: $playingHunt,
+            onDismiss: resumeLockedSessionIfNeeded
+        ) { hunt in
             PlaySessionView(hunt: hunt)
                 .environmentObject(musicCoordinator)
         }
@@ -81,12 +102,19 @@ struct AppRootView: View {
     }
 
     private var resumableHunt: TreasureHunt? {
+        lockedHunt ?? hunts.first { $0.playState == .inProgress }
+    }
+
+    private var lockedHunt: TreasureHunt? {
         hunts.first(where: \.isChildModeLocked)
-            ?? hunts.first { $0.playState == .inProgress }
     }
 
     private var backgroundMusicTrack: BackgroundMusicTrack? {
-        guard !isShowingOpeningVideo else { return nil }
+        guard hasResolvedInitialSession,
+              !isShowingOpeningVideo,
+              playingHunt == nil else {
+            return nil
+        }
 
         switch destination {
         case .title:
@@ -101,6 +129,15 @@ struct AppRootView: View {
     private func updateMusic() {
         musicCoordinator.setBaseTrack(backgroundMusicTrack)
         musicCoordinator.setSceneActive(scenePhase == .active)
+    }
+
+    private func resumeLockedSessionIfNeeded() {
+        guard playingHunt == nil,
+              let lockedHunt else {
+            return
+        }
+        isShowingOpeningVideo = false
+        playingHunt = lockedHunt
     }
 
     private func show(_ newDestination: AppDestination) {

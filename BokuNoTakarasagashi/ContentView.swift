@@ -123,7 +123,8 @@ struct ContentView: View {
         ) { hunt in
             PlaySessionView(
                 hunt: hunt,
-                startsInPreparation: startsPlayingInPreparation
+                startsInPreparation: startsPlayingInPreparation,
+                parentIsAuthorized: startsPlayingInPreparation
             )
         }
         .fileImporter(

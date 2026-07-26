@@ -10,9 +10,22 @@
 		B60267403014F6EF0068864B /* BokuNoTakarasagashi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BokuNoTakarasagashi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B60267503014F6F00068864B /* Exceptions for "BokuNoTakarasagashi" folder in "BokuNoTakarasagashi" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B602673F3014F6EF0068864B /* BokuNoTakarasagashi */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B60267423014F6EF0068864B /* BokuNoTakarasagashi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B60267503014F6F00068864B /* Exceptions for "BokuNoTakarasagashi" folder in "BokuNoTakarasagashi" target */,
+			);
 			path = BokuNoTakarasagashi;
 			sourceTree = "<group>";
 		};
@@ -262,16 +275,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = AK92W9FN2D;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "ぼくの宝探し";
-				INFOPLIST_KEY_NFCReaderUsageDescription = "宝のNFCタグを読み書きするためにNFCを使います。";
-				INFOPLIST_KEY_NSCameraUsageDescription = "宝のQRコード読み取りやヒント・記念写真の撮影にカメラを使います。";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BokuNoTakarasagashi/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -301,16 +306,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = AK92W9FN2D;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "ぼくの宝探し";
-				INFOPLIST_KEY_NFCReaderUsageDescription = "宝のNFCタグを読み書きするためにNFCを使います。";
-				INFOPLIST_KEY_NSCameraUsageDescription = "宝のQRコード読み取りやヒント・記念写真の撮影にカメラを使います。";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BokuNoTakarasagashi/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

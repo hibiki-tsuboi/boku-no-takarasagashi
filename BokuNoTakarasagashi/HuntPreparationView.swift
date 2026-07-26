@@ -25,6 +25,15 @@ struct HuntPreparationView: View {
         !stages.isEmpty && stages.allSatisfy { hiddenStageIDs.contains($0.id) }
     }
 
+    private var hasUnavailableNFCStage: Bool {
+        !NFCSessionController.isAvailable
+            && stages.contains { $0.verification == .nfc }
+    }
+
+    private var canContinue: Bool {
+        allTreasuresAreHidden && !hasUnavailableNFCStage
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             PlaySetupHeader(title: "宝をしかける準備", onClose: onClose)
@@ -33,6 +42,17 @@ struct HuntPreparationView: View {
                 VStack(spacing: 22) {
                     introduction
                     progress
+
+                    if hasUnavailableNFCStage {
+                        Label(
+                            "この端末ではNFCを使えません。いったん閉じて、NFCの宝をQRコードなどへ変更してください。",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TreasureTheme.coral)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .treasureCard()
+                    }
 
                     ForEach(Array(stages.enumerated()), id: \.element.id) { index, stage in
                         PreparationStageCard(
@@ -65,9 +85,14 @@ struct HuntPreparationView: View {
                     VStack(spacing: 9) {
                         Button("安全確認へ", action: onContinue)
                             .buttonStyle(TreasurePrimaryButtonStyle())
-                            .disabled(!allTreasuresAreHidden)
+                            .disabled(!canContinue)
 
-                        if !allTreasuresAreHidden {
+                        if hasUnavailableNFCStage {
+                            Text("NFCの宝は、この端末で使える発見方法へ変更してください")
+                                .font(.caption.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(TreasureTheme.coral)
+                        } else if !allTreasuresAreHidden {
                             Text("すべての宝を隠したら次へ進めます")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
@@ -231,7 +256,7 @@ private struct PreparationStageCard: View {
 
             Button(action: onToggleHidden) {
                 Label(
-                    isHidden ? "宝を隠しました" : "宝を隠したらチェック",
+                    hiddenButtonTitle,
                     systemImage: isHidden ? "checkmark.circle.fill" : "shippingbox.fill"
                 )
                 .font(.headline)
@@ -246,6 +271,7 @@ private struct PreparationStageCard: View {
                 )
             }
             .buttonStyle(.plain)
+            .disabled(!verificationIsAvailable)
         }
         .treasureCard()
     }
@@ -297,33 +323,52 @@ private struct PreparationStageCard: View {
             }
 
         case .nfc:
-            VStack(alignment: .leading, spacing: 12) {
-                NFCWriterControl(
-                    payload: stage.verificationPayload,
-                    onWriteSuccess: onNFCWritten
-                )
-                .buttonStyle(.bordered)
+            if NFCSessionController.isAvailable {
+                VStack(alignment: .leading, spacing: 12) {
+                    NFCWriterControl(
+                        payload: stage.verificationPayload,
+                        onWriteSuccess: onNFCWritten
+                    )
+                    .buttonStyle(.bordered)
 
-                if isNFCWritten {
-                    Label("この宝のデータを書き込み済み", systemImage: "checkmark.circle.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(TreasureTheme.teal)
+                    if isNFCWritten {
+                        Label("この宝のデータを書き込み済み", systemImage: "checkmark.circle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(TreasureTheme.teal)
+                    }
+
+                    NFCReaderControl(
+                        expectedPayload: stage.verificationPayload,
+                        buttonTitle: isTested
+                            ? "NFCタグをもう一度テスト"
+                            : "NFCタグを読み取りテスト",
+                        instruction: "書き込んだタグがこの宝のものか確認できます",
+                        successMessage: "正しい宝のNFCタグです！",
+                        usesPrimaryButtonStyle: false,
+                        onMatch: onNFCTested
+                    )
+
+                    VerificationTestStatus(isTested: isTested)
                 }
-
-                NFCReaderControl(
-                    expectedPayload: stage.verificationPayload,
-                    buttonTitle: isTested
-                        ? "NFCタグをもう一度テスト"
-                        : "NFCタグを読み取りテスト",
-                    instruction: "書き込んだタグがこの宝のものか確認できます",
-                    successMessage: "正しい宝のNFCタグです！",
-                    usesPrimaryButtonStyle: false,
-                    onMatch: onNFCTested
+            } else {
+                PreparationNote(
+                    icon: "exclamationmark.triangle.fill",
+                    text: "この端末ではNFCを利用できません。発見方法を変更してください。"
                 )
-
-                VerificationTestStatus(isTested: isTested)
+                .foregroundStyle(TreasureTheme.coral)
             }
         }
+    }
+
+    private var verificationIsAvailable: Bool {
+        stage.verification != .nfc || NFCSessionController.isAvailable
+    }
+
+    private var hiddenButtonTitle: String {
+        if !verificationIsAvailable {
+            return "先に発見方法を変更してください"
+        }
+        return isHidden ? "宝を隠しました" : "宝を隠したらチェック"
     }
 }
 

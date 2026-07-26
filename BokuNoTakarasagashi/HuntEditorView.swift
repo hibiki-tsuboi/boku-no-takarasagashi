@@ -150,6 +150,9 @@ struct HuntEditorView: View {
             && draft.stages.allSatisfy { stage in
                 !stage.hint.trimmed.isEmpty
                     && (stage.verification != .passphrase || !stage.passphrase.trimmed.isEmpty)
+                    && (stage.verification != .nfc || NFCSessionController.isAvailable)
+                    && stage.discoveryMessage.count
+                        <= TreasureContentLimits.maximumDiscoveryMessageLength
             }
 
         return titleIsValid && pinIsValid && stagesAreValid
@@ -405,13 +408,42 @@ private struct StageEditorView: View {
             }
 
             Section {
-                Picker("発見方法", selection: $stage.verification) {
-                    ForEach(TreasureVerification.allCases) { verification in
-                        Label(verification.title, systemImage: verification.systemImage)
-                            .tag(verification)
+                if nfcIsUnavailable {
+                    LabeledContent("発見方法") {
+                        Label(
+                            "NFCタグ（利用不可）",
+                            systemImage: TreasureVerification.nfc.systemImage
+                        )
+                        .foregroundStyle(TreasureTheme.coral)
                     }
+
+                    Label(
+                        "この端末ではNFCを使えません。保存するには発見方法を変更してください。",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(TreasureTheme.coral)
+
+                    Button {
+                        stage.verification = .qrCode
+                    } label: {
+                        Label("QRコードに変更", systemImage: "qrcode")
+                    }
+
+                    Button {
+                        stage.verification = .honesty
+                    } label: {
+                        Label("「みつけた！」に変更", systemImage: "hand.thumbsup.fill")
+                    }
+                } else {
+                    Picker("発見方法", selection: $stage.verification) {
+                        ForEach(availableVerifications) { verification in
+                            Label(verification.title, systemImage: verification.systemImage)
+                                .tag(verification)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
                 }
-                .pickerStyle(.navigationLink)
 
                 if stage.verification == .passphrase {
                     TextField("宝と一緒に置く合言葉", text: $stage.passphrase)
@@ -430,7 +462,7 @@ private struct StageEditorView: View {
                     }
                 }
 
-                if stage.verification == .nfc {
+                if stage.verification == .nfc && NFCSessionController.isAvailable {
                     NFCWriterControl(payload: stage.verificationPayload)
                 }
             } header: {
@@ -442,13 +474,32 @@ private struct StageEditorView: View {
             Section {
                 TextEditor(text: $stage.discoveryMessage)
                     .frame(minHeight: 82)
+                    .onChange(of: stage.discoveryMessage) { _, newValue in
+                        let limit = TreasureContentLimits.maximumDiscoveryMessageLength
+                        if newValue.count > limit {
+                            stage.discoveryMessage = String(newValue.prefix(limit))
+                        }
+                    }
             } header: {
                 Text("見つけたときのひとこと")
             } footer: {
-                Text(isLast
-                    ? "このあと、宝探し全体のクリアメッセージを表示します。"
-                    : "このメッセージのあとに、次のヒントが開きます。"
-                )
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isLast
+                        ? "このあと、宝探し全体のクリアメッセージを表示します。"
+                        : "このメッセージのあとに、次のヒントが開きます。"
+                    )
+
+                    Text(
+                        "\(stage.discoveryMessage.count) / "
+                            + "\(TreasureContentLimits.maximumDiscoveryMessageLength)文字"
+                    )
+                    .foregroundStyle(
+                        stage.discoveryMessage.count
+                            <= TreasureContentLimits.maximumDiscoveryMessageLength
+                            ? Color.secondary
+                            : TreasureTheme.coral
+                    )
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -467,7 +518,21 @@ private struct StageEditorView: View {
         case .qrCode:
             "QRコード画像を印刷するか別の端末に表示して、宝と一緒に置いてください。"
         case .nfc:
-            "書き込み可能なNDEF対応NFCタグを使います。書き込み後、そのタグを宝と一緒に置いてください。"
+            if NFCSessionController.isAvailable {
+                "書き込み可能なNDEF対応NFCタグを使います。書き込み後、そのタグを宝と一緒に置いてください。"
+            } else {
+                "この端末ではNFCを利用できません。QRコードなど別の発見方法へ変更してください。"
+            }
+        }
+    }
+
+    private var nfcIsUnavailable: Bool {
+        stage.verification == .nfc && !NFCSessionController.isAvailable
+    }
+
+    private var availableVerifications: [TreasureVerification] {
+        TreasureVerification.allCases.filter {
+            $0 != .nfc || NFCSessionController.isAvailable
         }
     }
 }

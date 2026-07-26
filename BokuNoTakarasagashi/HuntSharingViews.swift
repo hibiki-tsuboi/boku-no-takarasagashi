@@ -7,6 +7,7 @@ import SwiftData
 import SwiftUI
 
 enum HuntParentAction: Equatable {
+    case preview
     case duplicate
     case share
 }
@@ -24,6 +25,7 @@ struct HuntImportCandidate: Identifiable {
 
 struct ProtectedHuntActionView: View {
     let request: HuntActionRequest
+    let onPrepare: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -37,6 +39,11 @@ struct ProtectedHuntActionView: View {
             NavigationStack {
                 TreasureBackground {
                     switch request.action {
+                    case .preview:
+                        HuntPreviewView(
+                            hunt: request.hunt,
+                            onPrepare: onPrepare
+                        )
                     case .duplicate:
                         duplicateResult
                     case .share:
@@ -65,6 +72,8 @@ struct ProtectedHuntActionView: View {
 
     private var navigationTitle: String {
         switch request.action {
+        case .preview:
+            "保護者プレビュー"
         case .duplicate:
             "宝探しを複製"
         case .share:

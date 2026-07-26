@@ -25,11 +25,16 @@ struct PlaySessionView: View {
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
-    init(hunt: TreasureHunt) {
+    init(
+        hunt: TreasureHunt,
+        startsInPreparation: Bool = false
+    ) {
         self.hunt = hunt
 
         let initialPhase: PlayPhase
-        if hunt.isChildModeLocked {
+        if startsInPreparation {
+            initialPhase = .preparation
+        } else if hunt.isChildModeLocked {
             initialPhase = hunt.playState == .completed ? .completed : .playing
         } else if hunt.playState == .inProgress {
             initialPhase = .handoff
@@ -165,48 +170,12 @@ struct PlaySessionView: View {
                     VStack(spacing: 22) {
                         progressHeader
 
-                        VStack(spacing: 16) {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        currentStageIsLast
-                                            ? TreasureTheme.gold
-                                            : TreasureTheme.coral.opacity(0.15)
-                                    )
-
-                                Image(systemName: currentStageIsLast ? "gift.fill" : "magnifyingglass")
-                                    .font(.system(size: 36, weight: .bold))
-                                    .foregroundStyle(
-                                        currentStageIsLast
-                                            ? .white
-                                            : TreasureTheme.coral
-                                    )
-                            }
-                            .frame(width: 82, height: 82)
-                            .accessibilityHidden(true)
-
-                            Text(currentStageIsLast ? "さいごのヒント" : "ヒント \(hunt.currentStageIndex + 1)")
-                                .font(.title2.bold())
-                                .foregroundStyle(TreasureTheme.ink)
-
-                            if let hintImageData = stage.hintImageData {
-                                HintPhotoView(data: hintImageData)
-                            }
-
-                            Text(stage.hint)
-                                .font(.system(.title2, design: .rounded, weight: .semibold))
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(TreasureTheme.ink)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .accessibilityLabel("ヒント、\(stage.hint)")
-
-                            HintSpeechButton(
-                                controller: speechController,
-                                text: stage.hint
-                            )
-                        }
-                        .treasureCard()
+                        HuntHintCard(
+                            stage: stage,
+                            number: hunt.currentStageIndex + 1,
+                            isLast: currentStageIsLast,
+                            speechController: speechController
+                        )
 
                         extraHintControls(for: stage)
                         verificationControls(for: stage)
@@ -233,32 +202,10 @@ struct PlaySessionView: View {
     private func extraHintControls(for stage: TreasureStage) -> some View {
         if let extraHint = stage.availableExtraHint {
             if hunt.revealedExtraHintStageID == stage.id {
-                VStack(spacing: 12) {
-                    Label("おたすけヒント", systemImage: "lightbulb.fill")
-                        .font(.headline)
-                        .foregroundStyle(TreasureTheme.coral)
-
-                    Text(extraHint)
-                        .font(.system(.title3, design: .rounded, weight: .semibold))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.ink)
-                        .frame(maxWidth: .infinity)
-                        .accessibilityLabel("おたすけヒント、\(extraHint)")
-
-                    HintSpeechButton(
-                        controller: speechController,
-                        text: extraHint
-                    )
-                }
-                .padding(18)
-                .background(
-                    TreasureTheme.gold.opacity(0.18),
-                    in: RoundedRectangle(cornerRadius: 18)
+                HuntExtraHintCard(
+                    extraHint: extraHint,
+                    speechController: speechController
                 )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(TreasureTheme.gold.opacity(0.45), lineWidth: 1.5)
-                }
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             } else {
                 VStack(spacing: 8) {
@@ -747,7 +694,7 @@ struct PlaySetupHeader: View {
     }
 }
 
-private struct DiscoveryOverlay: View {
+struct DiscoveryOverlay: View {
     let message: String
     let isLast: Bool
     let onContinue: () -> Void

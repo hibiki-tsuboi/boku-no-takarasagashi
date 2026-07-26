@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var isImportingHunt = false
     @State private var editingHunt: TreasureHunt?
     @State private var playingHunt: TreasureHunt?
+    @State private var huntToPrepareAfterPreview: TreasureHunt?
+    @State private var startsPlayingInPreparation = false
     @State private var huntActionRequest: HuntActionRequest?
     @State private var importCandidate: HuntImportCandidate?
     @State private var importError: String?
@@ -84,14 +86,29 @@ struct ContentView: View {
         .sheet(item: $editingHunt) { hunt in
             ProtectedHuntEditorView(hunt: hunt)
         }
-        .sheet(item: $huntActionRequest) { request in
-            ProtectedHuntActionView(request: request)
+        .sheet(
+            item: $huntActionRequest,
+            onDismiss: startPreparationAfterPreview
+        ) { request in
+            ProtectedHuntActionView(
+                request: request,
+                onPrepare: {
+                    huntToPrepareAfterPreview = request.hunt
+                    huntActionRequest = nil
+                }
+            )
         }
         .sheet(item: $importCandidate) { candidate in
             HuntImportView(package: candidate.package)
         }
-        .fullScreenCover(item: $playingHunt) { hunt in
-            PlaySessionView(hunt: hunt)
+        .fullScreenCover(
+            item: $playingHunt,
+            onDismiss: { startsPlayingInPreparation = false }
+        ) { hunt in
+            PlaySessionView(
+                hunt: hunt,
+                startsInPreparation: startsPlayingInPreparation
+            )
         }
         .fileImporter(
             isPresented: $isImportingHunt,
@@ -185,8 +202,14 @@ struct ContentView: View {
             ForEach(hunts) { hunt in
                 HuntCard(
                     hunt: hunt,
-                    onPlay: { playingHunt = hunt },
+                    onPlay: { startPlaying(hunt) },
                     onEdit: { editingHunt = hunt },
+                    onPreview: {
+                        huntActionRequest = HuntActionRequest(
+                            hunt: hunt,
+                            action: .preview
+                        )
+                    },
                     onDuplicate: {
                         huntActionRequest = HuntActionRequest(
                             hunt: hunt,
@@ -217,7 +240,20 @@ struct ContentView: View {
 
     private func resumeLockedSessionIfNeeded() {
         guard playingHunt == nil else { return }
+        startsPlayingInPreparation = false
         playingHunt = hunts.first(where: \.isChildModeLocked)
+    }
+
+    private func startPlaying(_ hunt: TreasureHunt) {
+        startsPlayingInPreparation = false
+        playingHunt = hunt
+    }
+
+    private func startPreparationAfterPreview() {
+        guard let hunt = huntToPrepareAfterPreview else { return }
+        huntToPrepareAfterPreview = nil
+        startsPlayingInPreparation = true
+        playingHunt = hunt
     }
 
     private var importErrorIsPresented: Binding<Bool> {
@@ -251,6 +287,7 @@ private struct HuntCard: View {
     let hunt: TreasureHunt
     let onPlay: () -> Void
     let onEdit: () -> Void
+    let onPreview: () -> Void
     let onDuplicate: () -> Void
     let onShare: () -> Void
 
@@ -290,6 +327,10 @@ private struct HuntCard: View {
                 Menu {
                     Button(action: onEdit) {
                         Label("編集", systemImage: "pencil")
+                    }
+
+                    Button(action: onPreview) {
+                        Label("プレビュー", systemImage: "eye")
                     }
 
                     Button(action: onDuplicate) {

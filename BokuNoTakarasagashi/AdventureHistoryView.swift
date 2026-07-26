@@ -30,11 +30,15 @@ struct AdventureHistoryView: View {
                     List {
                         Section {
                             ForEach(records) { record in
-                                AdventureRecordRow(record: record)
+                                NavigationLink {
+                                    AdventureMemoryDetailView(record: record)
+                                } label: {
+                                    AdventureRecordRow(record: record)
+                                }
                             }
                             .onDelete(perform: deleteRecords)
                         } footer: {
-                            Text("記録は宝探し本体を削除しても残ります。左へスワイプすると削除できます。")
+                            Text("記録を開くと、写真やひとことの追加・共有ができます。左へスワイプすると削除できます。")
                         }
                     }
                     .scrollContentBackground(.hidden)
@@ -84,24 +88,26 @@ struct AdventureHistoryView: View {
 }
 
 private struct AdventureRecordRow: View {
-    let record: AdventureRecord
+    @Bindable var record: AdventureRecord
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(TreasureTheme.gold.opacity(0.2))
-
-                Image(systemName: "trophy.fill")
-                    .foregroundStyle(TreasureTheme.gold)
-            }
-            .frame(width: 46, height: 46)
-            .accessibilityHidden(true)
+            AdventureMemoryThumbnail(
+                imageData: record.victoryPhotoData,
+                size: 54
+            )
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(record.huntTitle)
                     .font(.headline)
                     .foregroundStyle(TreasureTheme.ink)
+
+                if let playerName = record.playerName,
+                   !playerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Label(playerName, systemImage: "person.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(TreasureTheme.teal)
+                }
 
                 Text(
                     record.completedAt,

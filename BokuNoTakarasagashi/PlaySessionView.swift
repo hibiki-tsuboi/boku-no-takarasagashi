@@ -21,6 +21,7 @@ struct PlaySessionView: View {
     @State private var passphrase = ""
     @State private var answerError: String?
     @State private var persistenceError: String?
+    @State private var completedRecord: AdventureRecord?
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
@@ -78,6 +79,7 @@ struct PlaySessionView: View {
                 case .completed:
                     CompletionView(
                         hunt: hunt,
+                        record: completedRecord,
                         onReturnToParent: { isShowingParentGate = true }
                     )
                 }
@@ -129,6 +131,7 @@ struct PlaySessionView: View {
             Text(persistenceError ?? "もう一度ためしてください。")
         }
         .sensoryFeedback(.success, trigger: isShowingDiscovery)
+        .onAppear(perform: loadCompletionRecordIfNeeded)
         .onDisappear {
             speechController.stop()
         }
@@ -446,7 +449,9 @@ struct PlaySessionView: View {
 
         if wasLastStage {
             guard hunt.playState != .completed else { return }
-            modelContext.insert(AdventureRecord(hunt: hunt))
+            let record = AdventureRecord(hunt: hunt)
+            modelContext.insert(record)
+            completedRecord = record
             soundPlayer.playCompletion()
             hunt.completeGame()
         } else {
@@ -471,6 +476,32 @@ struct PlaySessionView: View {
         saveProgress()
         isShowingParentGate = false
         dismiss()
+    }
+
+    private func loadCompletionRecordIfNeeded() {
+        guard case .completed = phase else { return }
+        guard hunt.playState == .completed,
+              completedRecord == nil else {
+            return
+        }
+
+        do {
+            let descriptor = FetchDescriptor<AdventureRecord>(
+                sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
+            )
+            let records = try modelContext.fetch(descriptor)
+
+            if let record = records.first(where: { $0.huntID == hunt.id }) {
+                completedRecord = record
+            } else {
+                let record = AdventureRecord(hunt: hunt)
+                modelContext.insert(record)
+                completedRecord = record
+                try modelContext.save()
+            }
+        } catch {
+            persistenceError = error.localizedDescription
+        }
     }
 
     private func saveProgress() {
@@ -766,9 +797,11 @@ private struct DiscoveryOverlay: View {
 
 private struct CompletionView: View {
     let hunt: TreasureHunt
+    let record: AdventureRecord?
     let onReturnToParent: () -> Void
 
     @State private var isCelebrating = false
+    @State private var isShowingMemoryEditor = false
 
     var body: some View {
         ScrollView {
@@ -838,6 +871,13 @@ private struct CompletionView: View {
                 .frame(maxWidth: .infinity)
                 .treasureCard()
 
+                if let record {
+                    AdventureMemoryCard(
+                        record: record,
+                        onEdit: { isShowingMemoryEditor = true }
+                    )
+                }
+
                 Button {
                     onReturnToParent()
                 } label: {
@@ -851,6 +891,11 @@ private struct CompletionView: View {
         .onAppear {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.58).delay(0.1)) {
                 isCelebrating = true
+            }
+        }
+        .sheet(isPresented: $isShowingMemoryEditor) {
+            if let record {
+                AdventureMemoryEditorView(record: record)
             }
         }
     }

@@ -212,13 +212,19 @@ final class AdventureRecord {
     var completedAt: Date
     var treasureCount: Int
     var extraHintsUsedCount: Int
+    var playerName: String?
+    var memoryNote: String?
+    @Attribute(.externalStorage) var victoryPhotoData: Data?
 
     init(
         huntID: UUID,
         huntTitle: String,
         completedAt: Date = .now,
         treasureCount: Int,
-        extraHintsUsedCount: Int
+        extraHintsUsedCount: Int,
+        playerName: String? = nil,
+        memoryNote: String? = nil,
+        victoryPhotoData: Data? = nil
     ) {
         id = UUID()
         self.huntID = huntID
@@ -226,6 +232,9 @@ final class AdventureRecord {
         self.completedAt = completedAt
         self.treasureCount = treasureCount
         self.extraHintsUsedCount = extraHintsUsedCount
+        self.playerName = playerName
+        self.memoryNote = memoryNote
+        self.victoryPhotoData = victoryPhotoData
     }
 
     convenience init(hunt: TreasureHunt) {
@@ -235,6 +244,12 @@ final class AdventureRecord {
             treasureCount: hunt.stages.count,
             extraHintsUsedCount: hunt.usedExtraHintCount
         )
+    }
+
+    var hasSavedMemory: Bool {
+        victoryPhotoData != nil
+            || playerName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            || memoryNote?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
     }
 }
 

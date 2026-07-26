@@ -9,6 +9,7 @@ import UIKit
 
 struct HintPhotoEditor: View {
     @Binding var imageData: Data?
+    var photoAccessibilityLabel = "ヒントの写真"
 
     @State private var selectedItem: PhotosPickerItem?
     @State private var isShowingCamera = false
@@ -18,7 +19,11 @@ struct HintPhotoEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let imageData {
-                HintPhotoView(data: imageData, maxHeight: 220)
+                HintPhotoView(
+                    data: imageData,
+                    maxHeight: 220,
+                    accessibilityLabel: photoAccessibilityLabel
+                )
             }
 
             if isLoading {
@@ -121,6 +126,7 @@ struct HintPhotoEditor: View {
 struct HintPhotoView: View {
     let data: Data
     var maxHeight: CGFloat = 280
+    var accessibilityLabel = "ヒントの写真"
 
     var body: some View {
         if let image = UIImage(data: data) {
@@ -133,7 +139,7 @@ struct HintPhotoView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(TreasureTheme.ink.opacity(0.08), lineWidth: 1)
                 }
-                .accessibilityLabel("ヒントの写真")
+                .accessibilityLabel(accessibilityLabel)
         }
     }
 }

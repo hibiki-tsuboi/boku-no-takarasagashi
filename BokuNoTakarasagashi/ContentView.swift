@@ -12,6 +12,7 @@ struct ContentView: View {
     private var hunts: [TreasureHunt]
 
     @State private var isCreatingHunt = false
+    @State private var isShowingHistory = false
     @State private var editingHunt: TreasureHunt?
     @State private var playingHunt: TreasureHunt?
 
@@ -34,6 +35,15 @@ struct ContentView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isShowingHistory = true
+                    } label: {
+                        Label("冒険のきろく", systemImage: "clock.arrow.circlepath")
+                    }
+                    .tint(TreasureTheme.teal)
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isCreatingHunt = true
@@ -45,7 +55,10 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $isCreatingHunt) {
-            HuntEditorView(hunt: nil)
+            HuntCreationFlowView()
+        }
+        .sheet(isPresented: $isShowingHistory) {
+            AdventureHistoryView()
         }
         .sheet(item: $editingHunt) { hunt in
             ProtectedHuntEditorView(hunt: hunt)
@@ -284,7 +297,7 @@ private struct HuntCard: View {
 #Preview {
     ContentView()
         .modelContainer(
-            for: [TreasureHunt.self, TreasureStage.self],
+            for: [TreasureHunt.self, TreasureStage.self, AdventureRecord.self],
             inMemory: true
         )
 }

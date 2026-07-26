@@ -21,6 +21,8 @@ struct PlaySessionView: View {
     @State private var passphrase = ""
     @State private var answerError: String?
     @State private var persistenceError: String?
+    @StateObject private var speechController = HintSpeechController()
+    @StateObject private var soundPlayer = GameSoundPlayer()
 
     init(hunt: TreasureHunt) {
         self.hunt = hunt
@@ -127,6 +129,9 @@ struct PlaySessionView: View {
             Text(persistenceError ?? "もう一度ためしてください。")
         }
         .sensoryFeedback(.success, trigger: isShowingDiscovery)
+        .onDisappear {
+            speechController.stop()
+        }
     }
 
     @ViewBuilder
@@ -181,6 +186,10 @@ struct PlaySessionView: View {
                                 .font(.title2.bold())
                                 .foregroundStyle(TreasureTheme.ink)
 
+                            if let hintImageData = stage.hintImageData {
+                                HintPhotoView(data: hintImageData)
+                            }
+
                             Text(stage.hint)
                                 .font(.system(.title2, design: .rounded, weight: .semibold))
                                 .multilineTextAlignment(.center)
@@ -188,6 +197,11 @@ struct PlaySessionView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                                 .accessibilityLabel("ヒント、\(stage.hint)")
+
+                            HintSpeechButton(
+                                controller: speechController,
+                                text: stage.hint
+                            )
                         }
                         .treasureCard()
 
@@ -227,6 +241,11 @@ struct PlaySessionView: View {
                         .foregroundStyle(TreasureTheme.ink)
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("おたすけヒント、\(extraHint)")
+
+                    HintSpeechButton(
+                        controller: speechController,
+                        text: extraHint
+                    )
                 }
                 .padding(18)
                 .background(
@@ -403,6 +422,8 @@ struct PlaySessionView: View {
 
     private func revealDiscovery() {
         answerError = nil
+        speechController.stop()
+        soundPlayer.playDiscovery()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
             isShowingDiscovery = true
         }
@@ -415,7 +436,7 @@ struct PlaySessionView: View {
         }
 
         withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-            hunt.revealedExtraHintStageID = stage.id
+            hunt.revealExtraHint(for: stage.id)
         }
         saveProgress()
     }
@@ -424,6 +445,9 @@ struct PlaySessionView: View {
         let wasLastStage = currentStageIsLast
 
         if wasLastStage {
+            guard hunt.playState != .completed else { return }
+            modelContext.insert(AdventureRecord(hunt: hunt))
+            soundPlayer.playCompletion()
             hunt.completeGame()
         } else {
             hunt.advanceToNextStage()
@@ -801,6 +825,15 @@ private struct CompletionView: View {
                     Label("宝 \(hunt.stages.count)こ 発見", systemImage: "gift.fill")
                         .font(.subheadline.bold())
                         .foregroundStyle(TreasureTheme.coral)
+
+                    if hunt.usedExtraHintCount > 0 {
+                        Label(
+                            "おたすけヒント \(hunt.usedExtraHintCount)かい",
+                            systemImage: "lightbulb.fill"
+                        )
+                        .font(.subheadline.bold())
+                        .foregroundStyle(TreasureTheme.teal)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .treasureCard()

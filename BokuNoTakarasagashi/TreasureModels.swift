@@ -61,6 +61,7 @@ final class TreasureHunt {
     var playStateRawValue: String
     var isChildModeLocked: Bool
     var revealedExtraHintStageID: UUID?
+    var extraHintsUsedCount: Int?
 
     @Relationship(deleteRule: .cascade, inverse: \TreasureStage.hunt)
     var stages: [TreasureStage]
@@ -82,6 +83,7 @@ final class TreasureHunt {
         playStateRawValue = HuntPlayState.ready.rawValue
         isChildModeLocked = false
         revealedExtraHintStageID = nil
+        extraHintsUsedCount = 0
         stages = []
     }
 
@@ -96,11 +98,16 @@ final class TreasureHunt {
         set { playStateRawValue = newValue.rawValue }
     }
 
+    var usedExtraHintCount: Int {
+        extraHintsUsedCount ?? 0
+    }
+
     func startNewGame() {
         currentStageIndex = 0
         playState = .inProgress
         isChildModeLocked = true
         revealedExtraHintStageID = nil
+        extraHintsUsedCount = 0
         updatedAt = .now
     }
 
@@ -113,6 +120,13 @@ final class TreasureHunt {
     func advanceToNextStage() {
         currentStageIndex += 1
         revealedExtraHintStageID = nil
+        updatedAt = .now
+    }
+
+    func revealExtraHint(for stageID: UUID) {
+        guard revealedExtraHintStageID != stageID else { return }
+        revealedExtraHintStageID = stageID
+        extraHintsUsedCount = usedExtraHintCount + 1
         updatedAt = .now
     }
 
@@ -134,6 +148,7 @@ final class TreasureStage {
     var orderIndex: Int
     var hint: String
     var extraHint: String?
+    @Attribute(.externalStorage) var hintImageData: Data?
     var discoveryMessage: String
     var verificationRawValue: String
     var passphrase: String
@@ -144,6 +159,7 @@ final class TreasureStage {
         orderIndex: Int,
         hint: String,
         extraHint: String? = nil,
+        hintImageData: Data? = nil,
         discoveryMessage: String,
         verification: TreasureVerification,
         passphrase: String,
@@ -154,6 +170,7 @@ final class TreasureStage {
         self.orderIndex = orderIndex
         self.hint = hint
         self.extraHint = extraHint
+        self.hintImageData = hintImageData
         self.discoveryMessage = discoveryMessage
         verificationRawValue = verification.rawValue
         self.passphrase = passphrase
@@ -184,6 +201,40 @@ final class TreasureStage {
             return nil
         }
         return value
+    }
+}
+
+@Model
+final class AdventureRecord {
+    var id: UUID
+    var huntID: UUID
+    var huntTitle: String
+    var completedAt: Date
+    var treasureCount: Int
+    var extraHintsUsedCount: Int
+
+    init(
+        huntID: UUID,
+        huntTitle: String,
+        completedAt: Date = .now,
+        treasureCount: Int,
+        extraHintsUsedCount: Int
+    ) {
+        id = UUID()
+        self.huntID = huntID
+        self.huntTitle = huntTitle
+        self.completedAt = completedAt
+        self.treasureCount = treasureCount
+        self.extraHintsUsedCount = extraHintsUsedCount
+    }
+
+    convenience init(hunt: TreasureHunt) {
+        self.init(
+            huntID: hunt.id,
+            huntTitle: hunt.title,
+            treasureCount: hunt.stages.count,
+            extraHintsUsedCount: hunt.usedExtraHintCount
+        )
     }
 }
 

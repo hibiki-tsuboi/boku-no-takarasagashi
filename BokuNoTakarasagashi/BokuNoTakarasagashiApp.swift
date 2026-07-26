@@ -14,6 +14,7 @@ struct BokuNoTakarasagashiApp: App {
         let schema = Schema([
             TreasureHunt.self,
             TreasureStage.self,
+            AdventureRecord.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

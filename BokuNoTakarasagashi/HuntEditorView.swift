@@ -15,9 +15,9 @@ struct HuntEditorView: View {
     @State private var draft: HuntDraft
     @State private var saveError: String?
 
-    init(hunt: TreasureHunt?) {
+    init(hunt: TreasureHunt?, template: HuntTemplate? = nil) {
         self.hunt = hunt
-        _draft = State(initialValue: HuntDraft(hunt: hunt))
+        _draft = State(initialValue: HuntDraft(hunt: hunt, template: template))
     }
 
     var body: some View {
@@ -197,6 +197,7 @@ struct HuntEditorView: View {
         destination.playState = .ready
         destination.isChildModeLocked = false
         destination.revealedExtraHintStageID = nil
+        destination.extraHintsUsedCount = 0
         destination.updatedAt = .now
 
         if !draft.parentPIN.isEmpty {
@@ -214,6 +215,7 @@ struct HuntEditorView: View {
                 extraHint: stageDraft.extraHint.trimmed.isEmpty
                     ? nil
                     : stageDraft.extraHint.trimmed,
+                hintImageData: stageDraft.hintImageData,
                 discoveryMessage: stageDraft.discoveryMessage.trimmed,
                 verification: stageDraft.verification,
                 passphrase: stageDraft.passphrase.trimmed,
@@ -241,7 +243,7 @@ private struct HuntDraft {
     var parentPIN: String
     var stages: [StageDraft]
 
-    init(hunt: TreasureHunt?) {
+    init(hunt: TreasureHunt?, template: HuntTemplate? = nil) {
         title = hunt?.title ?? ""
         openingMessage = hunt?.openingMessage ?? "ヒントをたどって、さいごの宝を見つけよう！"
         completionMessage = hunt?.completionMessage ?? "ぜんぶの宝を見つけた！おめでとう！"
@@ -250,6 +252,17 @@ private struct HuntDraft {
         if let hunt {
             stages = hunt.sortedStages.map { stage in
                 StageDraft(stage: stage)
+            }
+        } else if let template {
+            title = template.title
+            openingMessage = template.openingMessage
+            completionMessage = template.completionMessage
+            stages = template.stages.map { stage in
+                StageDraft(
+                    hint: stage.hint,
+                    extraHint: stage.extraHint,
+                    discoveryMessage: stage.discoveryMessage
+                )
             }
         } else {
             stages = [StageDraft()]
@@ -261,6 +274,7 @@ private struct StageDraft: Identifiable {
     let id: UUID
     var hint: String
     var extraHint: String
+    var hintImageData: Data?
     var discoveryMessage: String
     var verification: TreasureVerification
     var passphrase: String
@@ -270,6 +284,7 @@ private struct StageDraft: Identifiable {
         id: UUID = UUID(),
         hint: String = "",
         extraHint: String = "",
+        hintImageData: Data? = nil,
         discoveryMessage: String = "やったね！宝を見つけた！",
         verification: TreasureVerification = .honesty,
         passphrase: String = "",
@@ -278,6 +293,7 @@ private struct StageDraft: Identifiable {
         self.id = id
         self.hint = hint
         self.extraHint = extraHint
+        self.hintImageData = hintImageData
         self.discoveryMessage = discoveryMessage
         self.verification = verification
         self.passphrase = passphrase
@@ -288,6 +304,7 @@ private struct StageDraft: Identifiable {
         id = stage.id
         hint = stage.hint
         extraHint = stage.extraHint ?? ""
+        hintImageData = stage.hintImageData
         discoveryMessage = stage.discoveryMessage
         verification = stage.verification
         passphrase = stage.passphrase
@@ -337,6 +354,13 @@ private struct StageRow: View {
 
             Spacer()
 
+            if stage.hintImageData != nil {
+                Image(systemName: "photo.fill")
+                    .font(.caption)
+                    .foregroundStyle(TreasureTheme.coral)
+                    .accessibilityLabel("写真ヒントあり")
+            }
+
             Image(systemName: stage.verification.systemImage)
                 .font(.caption)
                 .foregroundStyle(TreasureTheme.teal)
@@ -370,6 +394,14 @@ private struct StageEditorView: View {
                 Text("おたすけヒント（任意）")
             } footer: {
                 Text("通常のヒントで難しいときだけ、さがす人が自分で開けます。空欄なら表示されません。")
+            }
+
+            Section {
+                HintPhotoEditor(imageData: $stage.hintImageData)
+            } header: {
+                Text("写真ヒント（任意）")
+            } footer: {
+                Text("隠し場所の一部分など、答えがすぐ分からない写真がおすすめです。")
             }
 
             Section {

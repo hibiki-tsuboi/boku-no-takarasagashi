@@ -208,6 +208,11 @@ private struct PreparationStageCard: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(TreasureTheme.ink)
 
+                if let hintImageData = stage.hintImageData {
+                    HintPhotoView(data: hintImageData, maxHeight: 160)
+                        .padding(.top, 5)
+                }
+
                 if let extraHint = stage.availableExtraHint {
                     Text("おたすけヒント")
                         .font(.caption.bold())

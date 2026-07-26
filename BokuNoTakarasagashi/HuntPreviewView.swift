@@ -9,6 +9,7 @@ struct HuntPreviewView: View {
     let hunt: TreasureHunt
     let onPrepare: () -> Void
 
+    @EnvironmentObject private var audioSettings: AppAudioSettings
     @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -70,7 +71,13 @@ struct HuntPreviewView: View {
                 )
             }
         }
-        .sensoryFeedback(.success, trigger: isShowingDiscovery)
+        .sensoryFeedback(
+            .success,
+            trigger: isShowingDiscovery
+        ) { _, isShowingDiscovery in
+            audioSettings.effectsAndHapticsAreEnabled
+                && isShowingDiscovery
+        }
         .onAppear {
             beginMusicRequest()
         }
@@ -470,7 +477,9 @@ struct HuntPreviewView: View {
     private func revealDiscovery() {
         answerError = nil
         speechController.stop()
-        soundPlayer.playDiscovery()
+        if audioSettings.effectsAndHapticsAreEnabled {
+            soundPlayer.playDiscovery()
+        }
         withAnimation(
             reduceMotion
                 ? nil
@@ -507,7 +516,9 @@ struct HuntPreviewView: View {
 
     private func showCompletion() {
         speechController.stop()
-        soundPlayer.playCompletion()
+        if audioSettings.effectsAndHapticsAreEnabled {
+            soundPlayer.playCompletion()
+        }
         isCelebrating = false
         withAnimation(reduceMotion ? nil : .easeInOut) {
             isShowingCompletion = true

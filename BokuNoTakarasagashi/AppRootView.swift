@@ -21,6 +21,7 @@ struct AppRootView: View {
     @State private var parentAccessIsAuthorized = false
     @State private var isAuthenticatingParent = false
     @State private var parentAccessError: String?
+    @StateObject private var audioSettings = AppAudioSettings()
     @StateObject private var musicCoordinator = BackgroundMusicCoordinator()
     @StateObject private var privacyShieldController =
         AppPrivacyShieldWindowController()
@@ -63,11 +64,20 @@ struct AppRootView: View {
             value: isShowingOpeningVideo
         )
         .environmentObject(musicCoordinator)
+        .environmentObject(audioSettings)
         .onAppear {
             resumeLockedSessionIfNeeded()
             hasResolvedInitialSession = true
+            musicCoordinator.setPlaybackEnabled(
+                audioSettings.backgroundMusicIsEnabled
+            )
             updateMusic()
             updatePrivacyShield()
+        }
+        .onChange(of: audioSettings.backgroundMusicIsEnabled) {
+            musicCoordinator.setPlaybackEnabled(
+                audioSettings.backgroundMusicIsEnabled
+            )
         }
         .onChange(of: backgroundMusicTrack) {
             updateMusic()
@@ -114,6 +124,7 @@ struct AppRootView: View {
         ) { hunt in
             PlaySessionView(hunt: hunt)
                 .environmentObject(musicCoordinator)
+                .environmentObject(audioSettings)
         }
         .alert("おうちの人を確認できませんでした", isPresented: parentAccessErrorIsPresented) {
             Button("OK", role: .cancel) {}

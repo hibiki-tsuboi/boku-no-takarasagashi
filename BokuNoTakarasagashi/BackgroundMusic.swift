@@ -144,7 +144,14 @@ final class BackgroundMusicCoordinator: ObservableObject {
     private let player = BackgroundMusicPlayer()
     private var baseTrack: BackgroundMusicTrack?
     private var requests: [Request] = []
+    private var playbackIsEnabled = true
     private var sceneIsActive = false
+
+    func setPlaybackEnabled(_ isEnabled: Bool) {
+        guard playbackIsEnabled != isEnabled else { return }
+        playbackIsEnabled = isEnabled
+        refreshPlayback()
+    }
 
     func setBaseTrack(_ track: BackgroundMusicTrack?) {
         guard baseTrack != track else { return }
@@ -185,6 +192,11 @@ final class BackgroundMusicCoordinator: ObservableObject {
     }
 
     private func refreshPlayback() {
+        guard playbackIsEnabled else {
+            player.stop()
+            return
+        }
+
         guard sceneIsActive else {
             player.pause()
             return

@@ -13,6 +13,7 @@ struct OpeningVideoView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var audioSettings: AppAudioSettings
 
     @State private var player: AVPlayer?
     @State private var didFinish = false
@@ -75,6 +76,9 @@ struct OpeningVideoView: View {
         .onChange(of: scenePhase) { _, newPhase in
             updatePlayback(for: newPhase)
         }
+        .onChange(of: audioSettings.backgroundMusicIsEnabled) {
+            player?.isMuted = !audioSettings.backgroundMusicIsEnabled
+        }
         .onReceive(
             NotificationCenter.default.publisher(
                 for: .AVPlayerItemDidPlayToEndTime
@@ -108,6 +112,7 @@ struct OpeningVideoView: View {
         let item = AVPlayerItem(url: url)
         let openingPlayer = AVPlayer(playerItem: item)
         openingPlayer.actionAtItemEnd = .pause
+        openingPlayer.isMuted = !audioSettings.backgroundMusicIsEnabled
         player = openingPlayer
         openingPlayer.play()
     }

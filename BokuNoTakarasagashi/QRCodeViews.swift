@@ -130,6 +130,7 @@ struct QRCodeScannerView: View {
     let onMatch: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var audioSettings: AppAudioSettings
     @State private var feedbackMessage: String?
     @State private var mismatchCount = 0
 
@@ -167,7 +168,13 @@ struct QRCodeScannerView: View {
             }
             .toolbarBackground(.visible, for: .navigationBar)
         }
-        .sensoryFeedback(.error, trigger: mismatchCount)
+        .sensoryFeedback(
+            .error,
+            trigger: mismatchCount
+        ) { oldCount, newCount in
+            audioSettings.effectsAndHapticsAreEnabled
+                && newCount > oldCount
+        }
     }
 
     private var scannerOverlay: some View {

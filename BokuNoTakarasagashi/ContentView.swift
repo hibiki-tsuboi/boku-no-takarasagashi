@@ -17,6 +17,7 @@ struct ContentView: View {
 
     @State private var isCreatingHunt = false
     @State private var isShowingHistory = false
+    @State private var isShowingAudioSettings = false
     @State private var isImportingHunt = false
     @State private var editingHunt: TreasureHunt?
     @State private var playingHunt: TreasureHunt?
@@ -72,7 +73,14 @@ struct ContentView: View {
                     .tint(TreasureTheme.teal)
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        isShowingAudioSettings = true
+                    } label: {
+                        Label("音の設定", systemImage: "speaker.wave.2")
+                    }
+                    .tint(TreasureTheme.teal)
+
                     Menu {
                         Button {
                             isCreatingHunt = true
@@ -105,6 +113,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingHistory) {
             AdventureHistoryView()
+        }
+        .sheet(isPresented: $isShowingAudioSettings) {
+            AudioSettingsView()
         }
         .sheet(item: $editingHunt) { hunt in
             ProtectedHuntEditorView(hunt: hunt)
@@ -572,6 +583,7 @@ private struct HuntCard: View {
 #Preview {
     ContentView()
         .environmentObject(BackgroundMusicCoordinator())
+        .environmentObject(AppAudioSettings())
         .modelContainer(
             for: [TreasureHunt.self, TreasureStage.self, AdventureRecord.self],
             inMemory: true

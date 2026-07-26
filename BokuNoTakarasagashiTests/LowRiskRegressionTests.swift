@@ -3,11 +3,39 @@
 //  BokuNoTakarasagashiTests
 //
 
+import Foundation
 import SwiftData
 import XCTest
 @testable import BokuNoTakarasagashi
 
 final class LowRiskRegressionTests: XCTestCase {
+    @MainActor
+    func testAudioSettingsDefaultToEnabledAndPersistChanges() throws {
+        let suiteName = "AppAudioSettingsTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let initialPreferences = AppAudioSettingsStorage.load(from: defaults)
+        XCTAssertTrue(initialPreferences.backgroundMusicIsEnabled)
+        XCTAssertTrue(initialPreferences.effectsAndHapticsAreEnabled)
+
+        AppAudioSettingsStorage.saveBackgroundMusicEnabled(
+            false,
+            to: defaults
+        )
+        AppAudioSettingsStorage.saveEffectsAndHapticsEnabled(
+            false,
+            to: defaults
+        )
+
+        let restoredPreferences = AppAudioSettingsStorage.load(from: defaults)
+        XCTAssertFalse(restoredPreferences.backgroundMusicIsEnabled)
+        XCTAssertFalse(restoredPreferences.effectsAndHapticsAreEnabled)
+    }
+
     @MainActor
     func testContentLimitsMatchTransferValidation() throws {
         let package = HuntTransferPackage(

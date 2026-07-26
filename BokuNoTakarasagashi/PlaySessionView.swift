@@ -12,6 +12,7 @@ struct PlaySessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var audioSettings: AppAudioSettings
     @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
     @Query private var hunts: [TreasureHunt]
 
@@ -166,7 +167,13 @@ struct PlaySessionView: View {
         } message: {
             Text(sessionError ?? "おうちの人に確認してください。")
         }
-        .sensoryFeedback(.success, trigger: isShowingDiscovery)
+        .sensoryFeedback(
+            .success,
+            trigger: isShowingDiscovery
+        ) { _, isShowingDiscovery in
+            audioSettings.effectsAndHapticsAreEnabled
+                && isShowingDiscovery
+        }
         .onAppear {
             loadCompletionRecordIfNeeded()
             beginMusicRequest()
@@ -557,7 +564,9 @@ struct PlaySessionView: View {
         answerError = nil
         passphraseIsFocused = false
         speechController.stop()
-        soundPlayer.playDiscovery()
+        if audioSettings.effectsAndHapticsAreEnabled {
+            soundPlayer.playDiscovery()
+        }
         withAnimation(
             reduceMotion
                 ? nil
@@ -600,7 +609,9 @@ struct PlaySessionView: View {
 
         if let newRecord {
             completedRecord = newRecord
-            soundPlayer.playCompletion()
+            if audioSettings.effectsAndHapticsAreEnabled {
+                soundPlayer.playCompletion()
+            }
         }
 
         passphrase = ""

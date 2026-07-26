@@ -5,6 +5,7 @@
 
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -13,8 +14,12 @@ struct ContentView: View {
 
     @State private var isCreatingHunt = false
     @State private var isShowingHistory = false
+    @State private var isImportingHunt = false
     @State private var editingHunt: TreasureHunt?
     @State private var playingHunt: TreasureHunt?
+    @State private var huntActionRequest: HuntActionRequest?
+    @State private var importCandidate: HuntImportCandidate?
+    @State private var importError: String?
 
     var body: some View {
         NavigationStack {
@@ -45,10 +50,26 @@ struct ContentView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isCreatingHunt = true
+                    Menu {
+                        Button {
+                            isCreatingHunt = true
+                        } label: {
+                            Label(
+                                "新しくつくる",
+                                systemImage: "plus.circle"
+                            )
+                        }
+
+                        Button {
+                            isImportingHunt = true
+                        } label: {
+                            Label(
+                                "共有ファイルを読み込む",
+                                systemImage: "square.and.arrow.down"
+                            )
+                        }
                     } label: {
-                        Label("宝探しをつくる", systemImage: "plus")
+                        Label("宝探しを追加", systemImage: "plus")
                     }
                     .tint(TreasureTheme.teal)
                 }
@@ -63,8 +84,25 @@ struct ContentView: View {
         .sheet(item: $editingHunt) { hunt in
             ProtectedHuntEditorView(hunt: hunt)
         }
+        .sheet(item: $huntActionRequest) { request in
+            ProtectedHuntActionView(request: request)
+        }
+        .sheet(item: $importCandidate) { candidate in
+            HuntImportView(package: candidate.package)
+        }
         .fullScreenCover(item: $playingHunt) { hunt in
             PlaySessionView(hunt: hunt)
+        }
+        .fileImporter(
+            isPresented: $isImportingHunt,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false,
+            onCompletion: handleImportedFile
+        )
+        .alert("共有ファイルを読み込めませんでした", isPresented: importErrorIsPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importError ?? "もう一度ためしてください。")
         }
         .onAppear(perform: resumeLockedSessionIfNeeded)
         .onChange(of: scenePhase) { _, newPhase in
@@ -148,7 +186,19 @@ struct ContentView: View {
                 HuntCard(
                     hunt: hunt,
                     onPlay: { playingHunt = hunt },
-                    onEdit: { editingHunt = hunt }
+                    onEdit: { editingHunt = hunt },
+                    onDuplicate: {
+                        huntActionRequest = HuntActionRequest(
+                            hunt: hunt,
+                            action: .duplicate
+                        )
+                    },
+                    onShare: {
+                        huntActionRequest = HuntActionRequest(
+                            hunt: hunt,
+                            action: .share
+                        )
+                    }
                 )
             }
 
@@ -169,12 +219,40 @@ struct ContentView: View {
         guard playingHunt == nil else { return }
         playingHunt = hunts.first(where: \.isChildModeLocked)
     }
+
+    private var importErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { importError != nil },
+            set: { isPresented in
+                if !isPresented {
+                    importError = nil
+                }
+            }
+        )
+    }
+
+    private func handleImportedFile(
+        _ result: Result<[URL], Error>
+    ) {
+        do {
+            guard let url = try result.get().first else { return }
+            let package = try HuntTransferService.readPackage(from: url)
+            importCandidate = HuntImportCandidate(package: package)
+        } catch {
+            if (error as? CocoaError)?.code == .userCancelled {
+                return
+            }
+            importError = error.localizedDescription
+        }
+    }
 }
 
 private struct HuntCard: View {
     let hunt: TreasureHunt
     let onPlay: () -> Void
     let onEdit: () -> Void
+    let onDuplicate: () -> Void
+    let onShare: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -209,14 +287,32 @@ private struct HuntCard: View {
 
                 Spacer()
 
-                Button(action: onEdit) {
-                    Image(systemName: "slider.horizontal.3")
+                Menu {
+                    Button(action: onEdit) {
+                        Label("編集", systemImage: "pencil")
+                    }
+
+                    Button(action: onDuplicate) {
+                        Label(
+                            "複製",
+                            systemImage: "plus.square.on.square"
+                        )
+                    }
+
+                    Button(action: onShare) {
+                        Label(
+                            "共有",
+                            systemImage: "square.and.arrow.up"
+                        )
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.circle)
                 .tint(TreasureTheme.ink)
-                .accessibilityLabel("\(hunt.title)を編集")
+                .accessibilityLabel("\(hunt.title)の保護者メニュー")
             }
 
             if hunt.playState == .inProgress, !hunt.stages.isEmpty {

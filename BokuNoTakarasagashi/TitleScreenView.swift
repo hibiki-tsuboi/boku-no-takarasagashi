@@ -1,0 +1,197 @@
+//
+//  TitleScreenView.swift
+//  BokuNoTakarasagashi
+//
+
+import SwiftUI
+
+struct TitleScreenView: View {
+    let resumableHunt: TreasureHunt?
+    let onStart: () -> Void
+    let onResume: (TreasureHunt) -> Void
+    let onOpenParent: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var artworkScale: CGFloat = 1.035
+    @State private var controlsAreVisible = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Image("TitleScreen")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(
+                        width: proxy.size.width,
+                        height: proxy.size.height
+                    )
+                    .clipped()
+                    .scaleEffect(artworkScale)
+                    .accessibilityLabel(
+                        "ぼくの宝探し。宝箱と地図が描かれたタイトル画面"
+                    )
+
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        .black.opacity(0.08),
+                        .black.opacity(0.78),
+                    ],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                .accessibilityHidden(true)
+
+                VStack {
+                    Spacer()
+
+                    VStack(spacing: 12) {
+                        Button(action: onStart) {
+                            Label(
+                                "ぼうけんをはじめる",
+                                systemImage: "map.fill"
+                            )
+                        }
+                        .buttonStyle(TitlePrimaryButtonStyle())
+
+                        if let resumableHunt {
+                            Button {
+                                onResume(resumableHunt)
+                            } label: {
+                                Label(
+                                    "つづきから",
+                                    systemImage: "arrow.right.circle.fill"
+                                )
+                            }
+                            .buttonStyle(TitleSecondaryButtonStyle())
+                            .accessibilityHint(
+                                "\(resumableHunt.title)を再開します"
+                            )
+                            .transition(
+                                .opacity.combined(
+                                    with: .move(edge: .bottom)
+                                )
+                            )
+                        }
+
+                        Button(action: onOpenParent) {
+                            Label(
+                                "おうちの人はこちら",
+                                systemImage: "person.crop.circle"
+                            )
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(
+                        .bottom,
+                        max(proxy.safeAreaInsets.bottom, 16)
+                    )
+                    .opacity(controlsAreVisible ? 1 : 0)
+                    .offset(y: controlsAreVisible ? 0 : 24)
+                }
+            }
+            .frame(
+                width: proxy.size.width,
+                height: proxy.size.height
+            )
+        }
+        .ignoresSafeArea()
+        .statusBarHidden(true)
+        .onAppear(perform: showControls)
+    }
+
+    private func showControls() {
+        guard !controlsAreVisible else { return }
+
+        if reduceMotion {
+            artworkScale = 1
+            controlsAreVisible = true
+            return
+        }
+
+        withAnimation(.easeOut(duration: 1.2)) {
+            artworkScale = 1
+        }
+
+        withAnimation(
+            .spring(response: 0.6, dampingFraction: 0.86)
+                .delay(0.18)
+        ) {
+            controlsAreVisible = true
+        }
+    }
+}
+
+private struct TitlePrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.title3.weight(.heavy))
+            .foregroundStyle(TreasureTheme.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 17)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(red: 1.00, green: 0.82, blue: 0.25),
+                        TreasureTheme.gold,
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ),
+                in: RoundedRectangle(cornerRadius: 18)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(.white.opacity(0.65), lineWidth: 1)
+            }
+            .shadow(
+                color: .black.opacity(0.32),
+                radius: 12,
+                y: 6
+            )
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(
+                .easeOut(duration: 0.14),
+                value: configuration.isPressed
+            )
+    }
+}
+
+private struct TitleSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 17)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 17)
+                    .stroke(.white.opacity(0.42), lineWidth: 1)
+            }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(
+                .easeOut(duration: 0.14),
+                value: configuration.isPressed
+            )
+    }
+}
+
+#Preview {
+    TitleScreenView(
+        resumableHunt: nil,
+        onStart: {},
+        onResume: { _ in },
+        onOpenParent: {}
+    )
+}

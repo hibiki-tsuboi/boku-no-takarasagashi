@@ -8,6 +8,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
+    let onShowTitle: (() -> Void)?
+
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \TreasureHunt.updatedAt, order: .reverse)
     private var hunts: [TreasureHunt]
@@ -22,6 +24,10 @@ struct ContentView: View {
     @State private var huntActionRequest: HuntActionRequest?
     @State private var importCandidate: HuntImportCandidate?
     @State private var importError: String?
+
+    init(onShowTitle: (() -> Void)? = nil) {
+        self.onShowTitle = onShowTitle
+    }
 
     var body: some View {
         NavigationStack {
@@ -42,7 +48,17 @@ struct ContentView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    if let onShowTitle {
+                        Button(action: onShowTitle) {
+                            Label(
+                                "タイトルへ戻る",
+                                systemImage: "chevron.backward"
+                            )
+                        }
+                        .tint(TreasureTheme.teal)
+                    }
+
                     Button {
                         isShowingHistory = true
                     } label: {

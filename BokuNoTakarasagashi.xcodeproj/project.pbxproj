@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		B60267403014F6EF0068864B /* BokuNoTakarasagashi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BokuNoTakarasagashi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B60267603014F6F00068864B /* BokuNoTakarasagashiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BokuNoTakarasagashiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -29,10 +30,22 @@
 			path = BokuNoTakarasagashi;
 			sourceTree = "<group>";
 		};
+		B60267613014F6F00068864B /* BokuNoTakarasagashiTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BokuNoTakarasagashiTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B602673D3014F6EF0068864B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B60267623014F6F00068864B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -46,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				B60267423014F6EF0068864B /* BokuNoTakarasagashi */,
+				B60267613014F6F00068864B /* BokuNoTakarasagashiTests */,
 				B60267413014F6EF0068864B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				B60267403014F6EF0068864B /* BokuNoTakarasagashi.app */,
+				B60267603014F6F00068864B /* BokuNoTakarasagashiTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,7 +98,40 @@
 			productReference = B60267403014F6EF0068864B /* BokuNoTakarasagashi.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B60267653014F6F00068864B /* BokuNoTakarasagashiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B602676A3014F6F00068864B /* Build configuration list for PBXNativeTarget "BokuNoTakarasagashiTests" */;
+			buildPhases = (
+				B60267643014F6F00068864B /* Sources */,
+				B60267623014F6F00068864B /* Frameworks */,
+				B60267633014F6F00068864B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B60267673014F6F00068864B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B60267613014F6F00068864B /* BokuNoTakarasagashiTests */,
+			);
+			name = BokuNoTakarasagashiTests;
+			packageProductDependencies = (
+			);
+			productName = BokuNoTakarasagashiTests;
+			productReference = B60267603014F6F00068864B /* BokuNoTakarasagashiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		B60267663014F6F00068864B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B60267383014F6EF0068864B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B602673F3014F6EF0068864B;
+			remoteInfo = BokuNoTakarasagashi;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		B60267383014F6EF0068864B /* Project object */ = {
@@ -100,6 +148,10 @@
 								enabled = 1;
 							};
 						};
+					};
+					B60267653014F6F00068864B = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = B602673F3014F6EF0068864B;
 					};
 				};
 			};
@@ -118,12 +170,20 @@
 			projectRoot = "";
 			targets = (
 				B602673F3014F6EF0068864B /* BokuNoTakarasagashi */,
+				B60267653014F6F00068864B /* BokuNoTakarasagashiTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B602673E3014F6EF0068864B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B60267633014F6F00068864B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -140,7 +200,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B60267643014F6F00068864B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B60267673014F6F00068864B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B602673F3014F6EF0068864B /* BokuNoTakarasagashi */;
+			targetProxy = B60267663014F6F00068864B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B602674B3014F6F00068864B /* Debug */ = {
@@ -326,6 +401,58 @@
 			};
 			name = Release;
 		};
+		B60267683014F6F00068864B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AK92W9FN2D;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hibiki.bokunotakarasagashiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BokuNoTakarasagashi.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BokuNoTakarasagashi";
+			};
+			name = Debug;
+		};
+		B60267693014F6F00068864B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AK92W9FN2D;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hibiki.bokunotakarasagashiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BokuNoTakarasagashi.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BokuNoTakarasagashi";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -343,6 +470,15 @@
 			buildConfigurations = (
 				B602674E3014F6F00068864B /* Debug */,
 				B602674F3014F6F00068864B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B602676A3014F6F00068864B /* Build configuration list for PBXNativeTarget "BokuNoTakarasagashiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B60267683014F6F00068864B /* Debug */,
+				B60267693014F6F00068864B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

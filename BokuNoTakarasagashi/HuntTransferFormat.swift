@@ -5,8 +5,8 @@
 
 import Foundation
 
-struct HuntTransferPackage: Codable, Equatable {
-    struct Stage: Codable, Equatable {
+nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
+    struct Stage: Codable, Equatable, Sendable {
         let hint: String
         let extraHint: String?
         let hintImageData: Data?
@@ -18,6 +18,7 @@ struct HuntTransferPackage: Codable, Equatable {
     static let formatIdentifier = "bokunotakarasagashi-hunt"
     static let currentVersion = 1
     static let maximumFileSize = 40 * 1_024 * 1_024
+    static let maximumStageCount = 10
 
     let format: String
     let version: Int
@@ -40,7 +41,7 @@ struct HuntTransferPackage: Codable, Equatable {
         self.stages = stages
     }
 
-    func encodedData() throws -> Data {
+    nonisolated func encodedData() throws -> Data {
         try validate()
 
         let encoder = JSONEncoder()
@@ -48,10 +49,11 @@ struct HuntTransferPackage: Codable, Equatable {
         return try encoder.encode(self)
     }
 
-    static func decode(from data: Data) throws -> HuntTransferPackage {
+    nonisolated static func decode(from data: Data) throws -> HuntTransferPackage {
         guard data.count <= maximumFileSize else {
             throw HuntTransferError.fileTooLarge
         }
+        try HuntTransferPreflightValidator.validate(data)
 
         do {
             let package = try JSONDecoder().decode(HuntTransferPackage.self, from: data)
@@ -64,7 +66,7 @@ struct HuntTransferPackage: Codable, Equatable {
         }
     }
 
-    func validate() throws {
+    nonisolated func validate() throws {
         guard format == Self.formatIdentifier else {
             throw HuntTransferError.invalidFile
         }
@@ -74,7 +76,7 @@ struct HuntTransferPackage: Codable, Equatable {
         guard Self.isValid(title, maximumLength: 100),
               openingMessage.count <= 1_000,
               completionMessage.count <= 1_000,
-              (1...10).contains(stages.count) else {
+              (1...Self.maximumStageCount).contains(stages.count) else {
             throw HuntTransferError.invalidContent
         }
 
@@ -107,13 +109,16 @@ struct HuntTransferPackage: Codable, Equatable {
         }
     }
 
-    private static func isValid(_ value: String, maximumLength: Int) -> Bool {
+    nonisolated private static func isValid(
+        _ value: String,
+        maximumLength: Int
+    ) -> Bool {
         !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && value.count <= maximumLength
     }
 }
 
-enum HuntTransferError: LocalizedError {
+nonisolated enum HuntTransferError: LocalizedError, Sendable {
     case invalidFile
     case unsupportedVersion
     case invalidContent
@@ -134,4 +139,202 @@ enum HuntTransferError: LocalizedError {
             "共有ファイルに読み込めない写真が含まれています。"
         }
     }
+}
+
+nonisolated enum HuntTransferPreflightValidator {
+    nonisolated static func validate(_ data: Data) throws {
+        var foundStages = false
+
+        try data.withUnsafeBytes { rawBuffer in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            var index = 0
+            var containerStack: [UInt8] = []
+
+            while index < bytes.count {
+                let byte = bytes[index]
+
+                if byte == asciiQuote {
+                    let start = index + 1
+                    let end = try stringEnd(in: bytes, startingAt: start)
+
+                    if containerStack == [asciiOpenBrace],
+                       matchesStagesKey(in: bytes, from: start, to: end) {
+                        var lookahead = end + 1
+                        skipWhitespace(in: bytes, index: &lookahead)
+                        if lookahead < bytes.count,
+                           bytes[lookahead] == asciiColon {
+                            lookahead += 1
+                            skipWhitespace(in: bytes, index: &lookahead)
+                            guard lookahead < bytes.count,
+                                  bytes[lookahead] == asciiOpenBracket else {
+                                throw HuntTransferError.invalidFile
+                            }
+                            try validateStageArray(
+                                in: bytes,
+                                openingBracketIndex: lookahead
+                            )
+                            foundStages = true
+                        }
+                    }
+
+                    index = end + 1
+                    continue
+                }
+
+                switch byte {
+                case asciiOpenBrace, asciiOpenBracket:
+                    containerStack.append(byte)
+                case asciiCloseBrace:
+                    if containerStack.last == asciiOpenBrace {
+                        containerStack.removeLast()
+                    }
+                case asciiCloseBracket:
+                    if containerStack.last == asciiOpenBracket {
+                        containerStack.removeLast()
+                    }
+                default:
+                    break
+                }
+                index += 1
+            }
+        }
+
+        guard foundStages else {
+            throw HuntTransferError.invalidFile
+        }
+    }
+
+    nonisolated private static func validateStageArray(
+        in bytes: UnsafeBufferPointer<UInt8>,
+        openingBracketIndex: Int
+    ) throws {
+        var index = openingBracketIndex + 1
+        var depth = 1
+        var stageCount = 0
+        var isExpectingElement = true
+
+        while index < bytes.count {
+            let byte = bytes[index]
+
+            if byte == asciiQuote {
+                if depth == 1, isExpectingElement {
+                    try registerStage(
+                        stageCount: &stageCount,
+                        isExpectingElement: &isExpectingElement
+                    )
+                }
+                index = try stringEnd(in: bytes, startingAt: index + 1) + 1
+                continue
+            }
+
+            if isWhitespace(byte) {
+                index += 1
+                continue
+            }
+
+            switch byte {
+            case asciiOpenBrace, asciiOpenBracket:
+                if depth == 1, isExpectingElement {
+                    try registerStage(
+                        stageCount: &stageCount,
+                        isExpectingElement: &isExpectingElement
+                    )
+                }
+                depth += 1
+            case asciiCloseBrace:
+                depth -= 1
+                guard depth >= 1 else {
+                    throw HuntTransferError.invalidFile
+                }
+            case asciiCloseBracket:
+                depth -= 1
+                if depth == 0 {
+                    return
+                }
+                guard depth >= 1 else {
+                    throw HuntTransferError.invalidFile
+                }
+            case asciiComma where depth == 1:
+                guard !isExpectingElement else {
+                    throw HuntTransferError.invalidFile
+                }
+                isExpectingElement = true
+            default:
+                if depth == 1, isExpectingElement {
+                    try registerStage(
+                        stageCount: &stageCount,
+                        isExpectingElement: &isExpectingElement
+                    )
+                }
+            }
+            index += 1
+        }
+
+        throw HuntTransferError.invalidFile
+    }
+
+    nonisolated private static func registerStage(
+        stageCount: inout Int,
+        isExpectingElement: inout Bool
+    ) throws {
+        stageCount += 1
+        guard stageCount <= HuntTransferPackage.maximumStageCount else {
+            throw HuntTransferError.invalidContent
+        }
+        isExpectingElement = false
+    }
+
+    nonisolated private static func stringEnd(
+        in bytes: UnsafeBufferPointer<UInt8>,
+        startingAt start: Int
+    ) throws -> Int {
+        var index = start
+        var isEscaped = false
+
+        while index < bytes.count {
+            let byte = bytes[index]
+            if isEscaped {
+                isEscaped = false
+            } else if byte == asciiBackslash {
+                isEscaped = true
+            } else if byte == asciiQuote {
+                return index
+            }
+            index += 1
+        }
+
+        throw HuntTransferError.invalidFile
+    }
+
+    nonisolated private static func matchesStagesKey(
+        in bytes: UnsafeBufferPointer<UInt8>,
+        from start: Int,
+        to end: Int
+    ) -> Bool {
+        let key: [UInt8] = [115, 116, 97, 103, 101, 115]
+        guard end - start == key.count else { return false }
+        return key.indices.allSatisfy { bytes[start + $0] == key[$0] }
+    }
+
+    nonisolated private static func skipWhitespace(
+        in bytes: UnsafeBufferPointer<UInt8>,
+        index: inout Int
+    ) {
+        while index < bytes.count, isWhitespace(bytes[index]) {
+            index += 1
+        }
+    }
+
+    nonisolated private static func isWhitespace(_ byte: UInt8) -> Bool {
+        byte == 0x20 || byte == 0x0A || byte == 0x0D || byte == 0x09
+    }
+
+    private static let asciiQuote: UInt8 = 0x22
+    private static let asciiBackslash: UInt8 = 0x5C
+    private static let asciiColon: UInt8 = 0x3A
+    private static let asciiComma: UInt8 = 0x2C
+    private static let asciiOpenBrace: UInt8 = 0x7B
+    private static let asciiCloseBrace: UInt8 = 0x7D
+    private static let asciiOpenBracket: UInt8 = 0x5B
+    private static let asciiCloseBracket: UInt8 = 0x5D
 }

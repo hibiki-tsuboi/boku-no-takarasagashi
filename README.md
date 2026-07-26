@@ -58,6 +58,7 @@ QRコードとNFCタグには宝ごとに異なる識別子を保存します。
 - クリア日時、宝の数、おたすけヒント使用数を残す冒険履歴
 - 記念写真、遊んだ人、ひとことを保存・編集・共有できる思い出アルバム
 - 4桁の保護者PINによるプレイ画面のロック
+- Face ID、Touch ID、端末パスコードによる保護者画面と冒険履歴の保護
 - QRコードの生成、共有、印刷、カメラスキャン
 - NFCタグへのNDEF書き込みと読み取り
 - 発見・クリア時の効果音、触覚フィードバック、クリア演出
@@ -96,6 +97,15 @@ xcodebuild \
   -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   build
+```
+
+ユニットテストは、`-showdestinations` で表示されたiOS 26.5シミュレータを指定して実行します。
+
+```sh
+xcodebuild test \
+  -project BokuNoTakarasagashi.xcodeproj \
+  -scheme BokuNoTakarasagashi \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5'
 ```
 
 実機で動かす場合は、XcodeのSigning & Capabilitiesで自分のDevelopment Teamを選択してください。QRコードにはカメラ対応端末、NFCには対応iPhoneと書き込み可能なNDEFタグが必要です。QRの初回利用時にはカメラの許可画面が、NFC利用時にはシステムの読み取り画面が表示されます。

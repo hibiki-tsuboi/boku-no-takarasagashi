@@ -15,6 +15,7 @@ struct OpeningVideoView: View {
 
     @State private var player: AVPlayer?
     @State private var didFinish = false
+    @AccessibilityFocusState private var skipIsFocused: Bool
 
     var body: some View {
         GeometryReader { proxy in
@@ -45,6 +46,7 @@ struct OpeningVideoView: View {
                     .accessibilityHint(
                         "オープニングを終了してタイトル画面を表示します"
                     )
+                    .accessibilityFocused($skipIsFocused)
             }
             .frame(
                 width: proxy.size.width,
@@ -53,7 +55,12 @@ struct OpeningVideoView: View {
         }
         .ignoresSafeArea()
         .statusBarHidden(true)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
         .onAppear(perform: startPlayback)
+        .onAppear {
+            skipIsFocused = true
+        }
         .onDisappear(perform: stopPlayback)
         .onChange(of: scenePhase) { _, newPhase in
             updatePlayback(for: newPhase)

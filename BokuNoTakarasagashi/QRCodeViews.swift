@@ -10,6 +10,16 @@ import UIKit
 import Vision
 import VisionKit
 
+enum QRCodeScannerCapability {
+    static var isSupported: Bool {
+        DataScannerViewController.isSupported
+    }
+
+    static var isCurrentlyAvailable: Bool {
+        isSupported && DataScannerViewController.isAvailable
+    }
+}
+
 struct QRCodePreparationView: View {
     let payload: String
     let treasureNumber: Int
@@ -96,8 +106,7 @@ struct QRCodeScannerView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                if DataScannerViewController.isSupported,
-                   DataScannerViewController.isAvailable {
+                if QRCodeScannerCapability.isCurrentlyAvailable {
                     QRDataScannerView(
                         onCode: handle,
                         onError: { message in

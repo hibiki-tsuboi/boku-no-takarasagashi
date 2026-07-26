@@ -11,6 +11,7 @@ struct ContentView: View {
     let onShowTitle: (() -> Void)?
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \TreasureHunt.updatedAt, order: .reverse)
     private var hunts: [TreasureHunt]
 
@@ -24,6 +25,10 @@ struct ContentView: View {
     @State private var huntActionRequest: HuntActionRequest?
     @State private var importCandidate: HuntImportCandidate?
     @State private var importError: String?
+    @State private var huntPendingDeletion: TreasureHunt?
+    @State private var deletionError: String?
+    @State private var importReadTask: Task<Void, Never>?
+    @State private var isReadingImportFile = false
 
     init(onShowTitle: (() -> Void)? = nil) {
         self.onShowTitle = onShowTitle
@@ -93,6 +98,8 @@ struct ContentView: View {
                 }
             }
         }
+        .allowsHitTesting(!isReadingImportFile)
+        .accessibilityHidden(isReadingImportFile)
         .sheet(isPresented: $isCreatingHunt) {
             HuntCreationFlowView()
         }
@@ -115,7 +122,7 @@ struct ContentView: View {
             )
         }
         .sheet(item: $importCandidate) { candidate in
-            HuntImportView(package: candidate.package)
+            HuntImportView(validatedPackage: candidate.validatedPackage)
         }
         .fullScreenCover(
             item: $playingHunt,
@@ -138,11 +145,49 @@ struct ContentView: View {
         } message: {
             Text(importError ?? "もう一度ためしてください。")
         }
+        .confirmationDialog(
+            "この宝探しを削除しますか？",
+            isPresented: deletionConfirmationIsPresented,
+            titleVisibility: .visible
+        ) {
+            Button("削除", role: .destructive, action: deletePendingHunt)
+            Button("キャンセル", role: .cancel) {
+                huntPendingDeletion = nil
+            }
+        } message: {
+            Text("ヒントや写真も端末から削除されます。過去の冒険のきろくは残ります。")
+        }
+        .alert("宝探しを削除できませんでした", isPresented: deletionErrorIsPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deletionError ?? "もう一度ためしてください。")
+        }
+        .overlay {
+            if isReadingImportFile {
+                ZStack {
+                    Color.black.opacity(0.28)
+                        .ignoresSafeArea()
+
+                    ProgressView("共有ファイルを確認しています…")
+                        .font(.headline)
+                        .padding(22)
+                        .background(
+                            .white.opacity(0.96),
+                            in: RoundedRectangle(cornerRadius: 18)
+                        )
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("共有ファイルを確認しています")
+            }
+        }
         .onAppear(perform: resumeLockedSessionIfNeeded)
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 resumeLockedSessionIfNeeded()
             }
+        }
+        .onDisappear {
+            importReadTask?.cancel()
         }
     }
 
@@ -238,7 +283,8 @@ struct ContentView: View {
                             hunt: hunt,
                             action: .share
                         )
-                    }
+                    },
+                    onDelete: { huntPendingDeletion = hunt }
                 )
             }
 
@@ -284,13 +330,70 @@ struct ContentView: View {
         )
     }
 
+    private var deletionConfirmationIsPresented: Binding<Bool> {
+        Binding(
+            get: { huntPendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented {
+                    huntPendingDeletion = nil
+                }
+            }
+        )
+    }
+
+    private var deletionErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { deletionError != nil },
+            set: { isPresented in
+                if !isPresented {
+                    deletionError = nil
+                }
+            }
+        )
+    }
+
+    private func deletePendingHunt() {
+        guard let hunt = huntPendingDeletion else { return }
+        huntPendingDeletion = nil
+
+        modelContext.delete(hunt)
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            deletionError = error.localizedDescription
+        }
+    }
+
     private func handleImportedFile(
         _ result: Result<[URL], Error>
     ) {
         do {
             guard let url = try result.get().first else { return }
-            let package = try HuntTransferService.readPackage(from: url)
-            importCandidate = HuntImportCandidate(package: package)
+            importReadTask?.cancel()
+            isReadingImportFile = true
+            importError = nil
+
+            importReadTask = Task {
+                defer {
+                    isReadingImportFile = false
+                    importReadTask = nil
+                }
+
+                do {
+                    let validatedPackage = try await Task.detached(priority: .userInitiated) {
+                        try HuntTransferService.readPackage(from: url)
+                    }.value
+                    try Task.checkCancellation()
+                    importCandidate = HuntImportCandidate(
+                        validatedPackage: validatedPackage
+                    )
+                } catch is CancellationError {
+                    return
+                } catch {
+                    importError = error.localizedDescription
+                }
+            }
         } catch {
             if (error as? CocoaError)?.code == .userCancelled {
                 return
@@ -307,6 +410,7 @@ private struct HuntCard: View {
     let onPreview: () -> Void
     let onDuplicate: () -> Void
     let onShare: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -362,6 +466,12 @@ private struct HuntCard: View {
                             "共有",
                             systemImage: "square.and.arrow.up"
                         )
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive, action: onDelete) {
+                        Label("削除", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis")

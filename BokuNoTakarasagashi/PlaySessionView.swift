@@ -112,6 +112,8 @@ struct PlaySessionView: View {
                     )
                 }
             }
+            .allowsHitTesting(!isShowingDiscovery)
+            .accessibilityHidden(isShowingDiscovery)
 
             if isShowingDiscovery, let stage = currentStage {
                 DiscoveryOverlay(
@@ -357,18 +359,22 @@ struct PlaySessionView: View {
             .treasureCard()
 
         case .qrCode:
-            VStack(spacing: 10) {
-                Button {
-                    isShowingQRCodeScanner = true
-                } label: {
-                    Label("QRコードを読み取る", systemImage: "qrcode.viewfinder")
-                }
-                .buttonStyle(TreasurePrimaryButtonStyle())
+            if QRCodeScannerCapability.isSupported {
+                VStack(spacing: 10) {
+                    Button {
+                        isShowingQRCodeScanner = true
+                    } label: {
+                        Label("QRコードを読み取る", systemImage: "qrcode.viewfinder")
+                    }
+                    .buttonStyle(TreasurePrimaryButtonStyle())
 
-                Text("宝といっしょにあるQRコードをカメラで写してね")
-                    .font(.caption)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
+                    Text("宝といっしょにあるQRコードをカメラで写してね")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                unavailableVerificationCard(title: "QRコードを読み取れません")
             }
 
         case .nfc:
@@ -478,6 +484,13 @@ struct PlaySessionView: View {
 
     private func startPlaying() {
         guard !hunt.sortedStages.contains(where: {
+            $0.verification == .qrCode && !QRCodeScannerCapability.isSupported
+        }) else {
+            sessionError = "この端末ではQRコードを読み取れません。発見方法を合言葉などへ変更してください。"
+            return
+        }
+
+        guard !hunt.sortedStages.contains(where: {
             $0.verification == .nfc && !NFCSessionController.isAvailable
         }) else {
             sessionError = "この端末ではNFCを使えません。発見方法をQRコードなどへ変更してください。"
@@ -501,6 +514,27 @@ struct PlaySessionView: View {
         withAnimation(.easeInOut) {
             phase = .playing
         }
+    }
+
+    private func unavailableVerificationCard(title: String) -> some View {
+        VStack(spacing: 10) {
+            Label(title, systemImage: "exclamationmark.triangle.fill")
+                .font(.subheadline.bold())
+                .foregroundStyle(TreasureTheme.coral)
+
+            Text("おうちの人に渡して、発見方法を変更してもらってください。")
+                .font(.caption)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+
+            Button {
+                isShowingParentGate = true
+            } label: {
+                Label("おうちの人にわたす", systemImage: "lock.fill")
+            }
+            .buttonStyle(.bordered)
+        }
+        .treasureCard()
     }
 
     private func checkPassphrase() {
@@ -862,6 +896,7 @@ struct DiscoveryOverlay: View {
     let message: String
     let isLast: Bool
     let onContinue: () -> Void
+    @AccessibilityFocusState private var headingIsFocused: Bool
 
     var body: some View {
         GeometryReader { proxy in
@@ -892,6 +927,7 @@ struct DiscoveryOverlay: View {
                             Text("みつけた！")
                                 .font(.system(.largeTitle, design: .rounded, weight: .heavy))
                                 .foregroundStyle(TreasureTheme.ink)
+                                .accessibilityFocused($headingIsFocused)
 
                             if !message.isEmpty {
                                 Text(message)
@@ -925,6 +961,11 @@ struct DiscoveryOverlay: View {
                 .shadow(color: TreasureTheme.ink.opacity(0.15), radius: 18, y: 8)
                 .padding(24)
             }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+        .onAppear {
+            headingIsFocused = true
         }
     }
 }

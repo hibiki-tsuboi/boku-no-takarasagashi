@@ -3,9 +3,11 @@
 //  BokuNoTakarasagashi
 //
 
+import ImageIO
 import PhotosUI
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct HintPhotoEditor: View {
     @Binding var imageData: Data?
@@ -15,6 +17,8 @@ struct HintPhotoEditor: View {
     @State private var isShowingCamera = false
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var preparationTask: Task<Void, Never>?
+    @State private var preparationRequestID: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -73,11 +77,7 @@ struct HintPhotoEditor: View {
         }
         .sheet(isPresented: $isShowingCamera) {
             CameraImagePicker { image in
-                guard let data = HintPhotoProcessor.storedData(from: image) else {
-                    errorMessage = "撮影した写真を準備できませんでした。"
-                    return
-                }
-                imageData = data
+                prepareCameraPhoto(image)
             }
             .ignoresSafeArea()
         }
@@ -85,6 +85,9 @@ struct HintPhotoEditor: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "別の写真でもう一度ためしてください。")
+        }
+        .onDisappear {
+            preparationTask?.cancel()
         }
     }
 
@@ -100,25 +103,74 @@ struct HintPhotoEditor: View {
     }
 
     private func loadPhoto(from item: PhotosPickerItem) {
+        let requestID = beginPhotoPreparation()
+
+        preparationTask = Task {
+            do {
+                guard let sourceData = try await item.loadTransferable(type: Data.self) else {
+                    throw HintPhotoProcessingError.unreadable
+                }
+                let preparedData = try await Task.detached(priority: .userInitiated) {
+                    try Task.checkCancellation()
+                    return try HintPhotoProcessor.storedData(from: sourceData)
+                }.value
+                try Task.checkCancellation()
+                finishPhotoPreparation(requestID, with: .success(preparedData))
+            } catch is CancellationError {
+                finishPhotoPreparation(requestID, with: nil)
+            } catch {
+                finishPhotoPreparation(requestID, with: .failure(error))
+            }
+        }
+    }
+
+    private func prepareCameraPhoto(_ image: UIImage) {
+        let requestID = beginPhotoPreparation()
+
+        preparationTask = Task {
+            do {
+                let preparedData = try await Task.detached(priority: .userInitiated) {
+                    try Task.checkCancellation()
+                    return try HintPhotoProcessor.storedData(from: image)
+                }.value
+                try Task.checkCancellation()
+                finishPhotoPreparation(requestID, with: .success(preparedData))
+            } catch is CancellationError {
+                finishPhotoPreparation(requestID, with: nil)
+            } catch {
+                finishPhotoPreparation(requestID, with: .failure(error))
+            }
+        }
+    }
+
+    private func beginPhotoPreparation() -> UUID {
+        preparationTask?.cancel()
+        let requestID = UUID()
+        preparationRequestID = requestID
         isLoading = true
         errorMessage = nil
+        return requestID
+    }
 
-        Task {
-            defer {
-                isLoading = false
-                selectedItem = nil
-            }
+    private func finishPhotoPreparation(
+        _ requestID: UUID,
+        with result: Result<Data, Error>?
+    ) {
+        guard preparationRequestID == requestID else { return }
+        defer {
+            isLoading = false
+            selectedItem = nil
+            preparationTask = nil
+            preparationRequestID = nil
+        }
 
-            do {
-                guard let sourceData = try await item.loadTransferable(type: Data.self),
-                      let preparedData = HintPhotoProcessor.storedData(from: sourceData) else {
-                    errorMessage = "選んだ写真を読み込めませんでした。"
-                    return
-                }
-                imageData = preparedData
-            } catch {
-                errorMessage = "選んだ写真を読み込めませんでした。"
-            }
+        switch result {
+        case .success(let data):
+            imageData = data
+        case .failure(let error):
+            errorMessage = error.localizedDescription
+        case nil:
+            break
         }
     }
 }
@@ -144,38 +196,106 @@ struct HintPhotoView: View {
     }
 }
 
-private enum HintPhotoProcessor {
-    private static let maximumDimension: CGFloat = 1_600
+nonisolated enum HintPhotoProcessor {
+    static let maximumInputByteCount = 50 * 1_024 * 1_024
+    private static let maximumPixelCount = 100_000_000
+    private static let maximumDimension = 1_600
+    private static let maximumStoredByteCount = 5 * 1_024 * 1_024
 
-    static func storedData(from data: Data) -> Data? {
-        guard let image = UIImage(data: data) else { return nil }
-        return storedData(from: image)
-    }
-
-    static func storedData(from image: UIImage) -> Data? {
-        guard image.size.width > 0, image.size.height > 0 else { return nil }
-
-        let longestSide = max(image.size.width, image.size.height)
-        let ratio = min(1, maximumDimension / longestSide)
-        let targetSize = CGSize(
-            width: max(1, (image.size.width * ratio).rounded()),
-            height: max(1, (image.size.height * ratio).rounded())
-        )
-
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = true
-
-        let preparedImage = UIGraphicsImageRenderer(
-            size: targetSize,
-            format: format
-        ).image { context in
-            UIColor.white.setFill()
-            context.fill(CGRect(origin: .zero, size: targetSize))
-            image.draw(in: CGRect(origin: .zero, size: targetSize))
+    nonisolated static func storedData(from data: Data) throws -> Data {
+        guard !data.isEmpty,
+              data.count <= maximumInputByteCount else {
+            throw HintPhotoProcessingError.tooLarge
         }
 
-        return preparedImage.jpegData(compressionQuality: 0.82)
+        let sourceOptions = [
+            kCGImageSourceShouldCache: false,
+        ] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(
+            data as CFData,
+            sourceOptions
+        ),
+        let properties = CGImageSourceCopyPropertiesAtIndex(
+            source,
+            0,
+            sourceOptions
+        ) as? [CFString: Any],
+        let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,
+        let height = properties[kCGImagePropertyPixelHeight] as? NSNumber else {
+            throw HintPhotoProcessingError.unreadable
+        }
+
+        let pixelWidth = width.intValue
+        let pixelHeight = height.intValue
+        guard pixelWidth > 0,
+              pixelHeight > 0,
+              pixelWidth <= maximumPixelCount / pixelHeight else {
+            throw HintPhotoProcessingError.tooLarge
+        }
+
+        let thumbnailOptions = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maximumDimension,
+            kCGImageSourceShouldCacheImmediately: true,
+        ] as CFDictionary
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            thumbnailOptions
+        ) else {
+            throw HintPhotoProcessingError.unreadable
+        }
+
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            output,
+            UTType.jpeg.identifier as CFString,
+            1,
+            nil
+        ) else {
+            throw HintPhotoProcessingError.unreadable
+        }
+        let destinationOptions = [
+            kCGImageDestinationLossyCompressionQuality: 0.82,
+        ] as CFDictionary
+        CGImageDestinationAddImage(
+            destination,
+            thumbnail,
+            destinationOptions
+        )
+        guard CGImageDestinationFinalize(destination) else {
+            throw HintPhotoProcessingError.unreadable
+        }
+
+        let result = output as Data
+        guard result.count <= maximumStoredByteCount else {
+            throw HintPhotoProcessingError.tooLarge
+        }
+        return result
+    }
+
+    nonisolated static func storedData(from image: UIImage) throws -> Data {
+        guard image.size.width > 0,
+              image.size.height > 0,
+              let sourceData = image.jpegData(compressionQuality: 0.95) else {
+            throw HintPhotoProcessingError.unreadable
+        }
+        return try storedData(from: sourceData)
+    }
+}
+
+nonisolated enum HintPhotoProcessingError: LocalizedError {
+    case tooLarge
+    case unreadable
+
+    var errorDescription: String? {
+        switch self {
+        case .tooLarge:
+            return "写真が大きすぎます。別の写真を選んでください。"
+        case .unreadable:
+            return "写真を読み込めませんでした。別の写真でもう一度ためしてください。"
+        }
     }
 }
 

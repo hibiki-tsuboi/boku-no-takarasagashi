@@ -7,12 +7,20 @@ import Foundation
 import ImageIO
 import SwiftData
 
-struct TemporaryHuntShareFile {
+nonisolated struct TemporaryHuntShareFile: Sendable {
     let directoryURL: URL
     let fileURL: URL
 
-    func remove() {
+    nonisolated func remove() {
         try? FileManager.default.removeItem(at: directoryURL)
+    }
+}
+
+nonisolated struct ValidatedHuntTransferPackage: Sendable {
+    let package: HuntTransferPackage
+
+    fileprivate init(package: HuntTransferPackage) {
+        self.package = package
     }
 }
 
@@ -50,10 +58,11 @@ enum HuntTransferService {
     }
 
     static func importHunt(
-        from package: HuntTransferPackage,
+        from validatedPackage: ValidatedHuntTransferPackage,
         parentPIN: String,
         in modelContext: ModelContext
     ) throws -> TreasureHunt {
+        let package = validatedPackage.package
         let hunt = try makeHunt(
             from: package,
             title: package.title,
@@ -64,7 +73,10 @@ enum HuntTransferService {
         return hunt
     }
 
-    static func readPackage(from url: URL) throws -> HuntTransferPackage {
+    nonisolated static func readPackage(
+        from url: URL
+    ) throws -> ValidatedHuntTransferPackage {
+        try Task.checkCancellation()
         let isAccessing = url.startAccessingSecurityScopedResource()
         defer {
             if isAccessing {
@@ -79,17 +91,20 @@ enum HuntTransferService {
         }
 
         let data = try Data(contentsOf: url, options: .mappedIfSafe)
+        try Task.checkCancellation()
         let package = try HuntTransferPackage.decode(from: data)
         try validateAppContent(package)
-        return package
+        try Task.checkCancellation()
+        return ValidatedHuntTransferPackage(package: package)
     }
 
-    static func makeTemporaryShareFile(
-        for hunt: TreasureHunt
+    nonisolated static func makeTemporaryShareFile(
+        from package: HuntTransferPackage
     ) throws -> TemporaryHuntShareFile {
-        let package = HuntTransferPackage(hunt: hunt)
+        try Task.checkCancellation()
         try validateAppContent(package)
         let data = try package.encodedData()
+        try Task.checkCancellation()
         let directoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("HuntShare-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(
@@ -98,10 +113,11 @@ enum HuntTransferService {
         )
 
         let fileURL = directoryURL
-            .appendingPathComponent(safeFileName(for: hunt.title))
+            .appendingPathComponent(safeFileName(for: package.title))
             .appendingPathExtension("json")
 
         do {
+            try Task.checkCancellation()
             try data.write(to: fileURL, options: .atomic)
             return TemporaryHuntShareFile(
                 directoryURL: directoryURL,
@@ -119,9 +135,6 @@ enum HuntTransferService {
         parentPIN: String,
         in modelContext: ModelContext
     ) throws -> TreasureHunt {
-        try package.validate()
-        try validateAppContent(package)
-
         let hunt = TreasureHunt(
             title: title,
             openingMessage: package.openingMessage,
@@ -154,7 +167,7 @@ enum HuntTransferService {
         return hunt
     }
 
-    private static func validateAppContent(
+    nonisolated private static func validateAppContent(
         _ package: HuntTransferPackage
     ) throws {
         for stage in package.stages {
@@ -168,7 +181,7 @@ enum HuntTransferService {
         }
     }
 
-    private static func isValidImage(_ data: Data) -> Bool {
+    nonisolated private static func isValidImage(_ data: Data) -> Bool {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, options),
               let properties = CGImageSourceCopyPropertiesAtIndex(
@@ -188,7 +201,7 @@ enum HuntTransferService {
             && pixelWidth * pixelHeight <= 16_000_000
     }
 
-    private static func safeFileName(for title: String) -> String {
+    nonisolated private static func safeFileName(for title: String) -> String {
         let invalidCharacters = CharacterSet(charactersIn: "/:\\?%*|\"<>")
         let components = title.components(separatedBy: invalidCharacters)
         let joined = components
@@ -199,7 +212,8 @@ enum HuntTransferService {
     }
 }
 
-private extension HuntTransferPackage {
+extension HuntTransferPackage {
+    @MainActor
     init(hunt: TreasureHunt) {
         self.init(
             title: hunt.title,

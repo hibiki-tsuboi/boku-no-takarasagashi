@@ -150,6 +150,7 @@ struct HuntEditorView: View {
             && draft.stages.allSatisfy { stage in
                 !stage.hint.trimmed.isEmpty
                     && (stage.verification != .passphrase || !stage.passphrase.trimmed.isEmpty)
+                    && (stage.verification != .qrCode || QRCodeScannerCapability.isSupported)
                     && (stage.verification != .nfc || NFCSessionController.isAvailable)
                     && stage.discoveryMessage.count
                         <= TreasureContentLimits.maximumDiscoveryMessageLength
@@ -408,26 +409,29 @@ private struct StageEditorView: View {
             }
 
             Section {
-                if nfcIsUnavailable {
+                if verificationIsUnavailable {
                     LabeledContent("発見方法") {
                         Label(
-                            "NFCタグ（利用不可）",
-                            systemImage: TreasureVerification.nfc.systemImage
+                            "\(stage.verification.title)（利用不可）",
+                            systemImage: stage.verification.systemImage
                         )
                         .foregroundStyle(TreasureTheme.coral)
                     }
 
                     Label(
-                        "この端末ではNFCを使えません。保存するには発見方法を変更してください。",
+                        "この端末では\(stage.verification.title)を使えません。保存するには発見方法を変更してください。",
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .font(.footnote)
                     .foregroundStyle(TreasureTheme.coral)
 
-                    Button {
-                        stage.verification = .qrCode
-                    } label: {
-                        Label("QRコードに変更", systemImage: "qrcode")
+                    if QRCodeScannerCapability.isSupported,
+                       stage.verification != .qrCode {
+                        Button {
+                            stage.verification = .qrCode
+                        } label: {
+                            Label("QRコードに変更", systemImage: "qrcode")
+                        }
                     }
 
                     Button {
@@ -451,7 +455,7 @@ private struct StageEditorView: View {
                         .autocorrectionDisabled()
                 }
 
-                if stage.verification == .qrCode {
+                if stage.verification == .qrCode && QRCodeScannerCapability.isSupported {
                     NavigationLink {
                         QRCodePreparationView(
                             payload: stage.verificationPayload,
@@ -516,7 +520,11 @@ private struct StageEditorView: View {
         case .passphrase:
             "紙に合言葉を書いて宝と一緒に置いてください。大文字・小文字や全角・半角の違いは無視します。"
         case .qrCode:
-            "QRコード画像を印刷するか別の端末に表示して、宝と一緒に置いてください。"
+            if QRCodeScannerCapability.isSupported {
+                "QRコード画像を印刷するか別の端末に表示して、宝と一緒に置いてください。"
+            } else {
+                "この端末ではQRコードを読み取れません。合言葉など別の発見方法へ変更してください。"
+            }
         case .nfc:
             if NFCSessionController.isAvailable {
                 "書き込み可能なNDEF対応NFCタグを使います。書き込み後、そのタグを宝と一緒に置いてください。"
@@ -526,13 +534,27 @@ private struct StageEditorView: View {
         }
     }
 
-    private var nfcIsUnavailable: Bool {
-        stage.verification == .nfc && !NFCSessionController.isAvailable
+    private var verificationIsUnavailable: Bool {
+        switch stage.verification {
+        case .qrCode:
+            !QRCodeScannerCapability.isSupported
+        case .nfc:
+            !NFCSessionController.isAvailable
+        case .honesty, .passphrase:
+            false
+        }
     }
 
     private var availableVerifications: [TreasureVerification] {
         TreasureVerification.allCases.filter {
-            $0 != .nfc || NFCSessionController.isAvailable
+            switch $0 {
+            case .qrCode:
+                QRCodeScannerCapability.isSupported
+            case .nfc:
+                NFCSessionController.isAvailable
+            case .honesty, .passphrase:
+                true
+            }
         }
     }
 }

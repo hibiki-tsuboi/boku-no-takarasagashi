@@ -20,7 +20,7 @@ struct HuntActionRequest: Identifiable {
 
 struct HuntImportCandidate: Identifiable {
     let id = UUID()
-    let package: HuntTransferPackage
+    let validatedPackage: ValidatedHuntTransferPackage
 }
 
 struct ProtectedHuntActionView: View {
@@ -158,10 +158,11 @@ struct ProtectedHuntActionView: View {
     private func duplicateHunt() {
         operationError = nil
 
-        let hasUnavailableNFC = !NFCSessionController.isAvailable
-            && request.hunt.stages.contains { $0.verification == .nfc }
-        guard !hasUnavailableNFC else {
-            operationError = "この端末ではNFCを利用できないため複製できません。先に発見方法を変更してください。"
+        let unavailableVerification = request.hunt.stages
+            .map(\.verification)
+            .first { !deviceSupports($0) }
+        if let unavailableVerification {
+            operationError = "この端末では\(unavailableVerification.title)を利用できないため複製できません。先に発見方法を変更してください。"
             return
         }
 
@@ -183,6 +184,7 @@ private struct HuntShareContent: View {
 
     @State private var shareFile: TemporaryHuntShareFile?
     @State private var preparationError: String?
+    @State private var preparationTask: Task<Void, Never>?
 
     var body: some View {
         ScrollView {
@@ -266,10 +268,11 @@ private struct HuntShareContent: View {
             }
             .padding(24)
         }
-        .task {
+        .onAppear {
             prepareShareFile()
         }
         .onDisappear {
+            preparationTask?.cancel()
             shareFile?.remove()
         }
     }
@@ -279,26 +282,44 @@ private struct HuntShareContent: View {
     }
 
     private func prepareShareFile() {
+        preparationTask?.cancel()
         shareFile?.remove()
         shareFile = nil
         preparationError = nil
 
-        do {
-            shareFile = try HuntTransferService.makeTemporaryShareFile(for: hunt)
-        } catch {
-            preparationError = error.localizedDescription
+        let package = HuntTransferPackage(hunt: hunt)
+        preparationTask = Task {
+            var preparedFile: TemporaryHuntShareFile?
+
+            do {
+                preparedFile = try await Task.detached(priority: .userInitiated) {
+                    try HuntTransferService.makeTemporaryShareFile(from: package)
+                }.value
+                try Task.checkCancellation()
+                shareFile = preparedFile
+                preparedFile = nil
+            } catch is CancellationError {
+                preparedFile?.remove()
+            } catch {
+                preparedFile?.remove()
+                preparationError = error.localizedDescription
+            }
         }
     }
 }
 
 struct HuntImportView: View {
-    let package: HuntTransferPackage
+    let validatedPackage: ValidatedHuntTransferPackage
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     @State private var parentPIN = ""
     @State private var importError: String?
+
+    private var package: HuntTransferPackage {
+        validatedPackage.package
+    }
 
     var body: some View {
         NavigationStack {
@@ -352,16 +373,16 @@ struct HuntImportView: View {
                     }
                 }
 
-                if containsUnavailableNFC {
+                if let unavailableVerification {
                     Section {
                         Label(
-                            "この端末ではNFCを利用できないため、この宝探しは読み込めません。NFC対応のiPhoneで読み込むか、送信元で発見方法を変更してください。",
+                            "この端末では\(unavailableVerification.title)を利用できないため、この宝探しは読み込めません。対応するiPhoneで読み込むか、送信元で発見方法を変更してください。",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.footnote)
                         .foregroundStyle(TreasureTheme.coral)
                     } header: {
-                        Text("NFCを利用できません")
+                        Text("利用できない発見方法")
                     }
                 }
 
@@ -390,7 +411,7 @@ struct HuntImportView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("読み込む", action: importHunt)
                         .fontWeight(.semibold)
-                        .disabled(parentPIN.count != 4 || containsUnavailableNFC)
+                        .disabled(parentPIN.count != 4 || unavailableVerification != nil)
                 }
             }
             .alert("読み込めませんでした", isPresented: errorIsPresented) {
@@ -413,11 +434,12 @@ struct HuntImportView: View {
         }
     }
 
-    private var containsUnavailableNFC: Bool {
-        !NFCSessionController.isAvailable
-            && package.stages.contains {
-                $0.verificationRawValue == TreasureVerification.nfc.rawValue
+    private var unavailableVerification: TreasureVerification? {
+        package.stages
+            .compactMap {
+                TreasureVerification(rawValue: $0.verificationRawValue)
             }
+            .first { !deviceSupports($0) }
     }
 
     private var errorIsPresented: Binding<Bool> {
@@ -433,14 +455,14 @@ struct HuntImportView: View {
 
     private func importHunt() {
         guard parentPIN.count == 4 else { return }
-        guard !containsUnavailableNFC else {
-            importError = "この端末ではNFCを利用できません。発見方法を変更してから読み込んでください。"
+        guard unavailableVerification == nil else {
+            importError = "この端末で使えない発見方法が含まれています。変更してから読み込んでください。"
             return
         }
 
         do {
             _ = try HuntTransferService.importHunt(
-                from: package,
+                from: validatedPackage,
                 parentPIN: parentPIN,
                 in: modelContext
             )
@@ -449,5 +471,18 @@ struct HuntImportView: View {
             modelContext.rollback()
             importError = error.localizedDescription
         }
+    }
+}
+
+private func deviceSupports(
+    _ verification: TreasureVerification
+) -> Bool {
+    switch verification {
+    case .qrCode:
+        QRCodeScannerCapability.isSupported
+    case .nfc:
+        NFCSessionController.isAvailable
+    case .honesty, .passphrase:
+        true
     }
 }

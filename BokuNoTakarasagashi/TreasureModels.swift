@@ -48,7 +48,7 @@ enum HuntPlayState: String {
     case completed
 }
 
-enum TreasureContentLimits {
+nonisolated enum TreasureContentLimits {
     static let maximumDiscoveryMessageLength = 1_000
 }
 

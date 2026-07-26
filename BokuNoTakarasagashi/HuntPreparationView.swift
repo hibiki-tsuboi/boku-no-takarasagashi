@@ -25,13 +25,18 @@ struct HuntPreparationView: View {
         !stages.isEmpty && stages.allSatisfy { hiddenStageIDs.contains($0.id) }
     }
 
-    private var hasUnavailableNFCStage: Bool {
-        !NFCSessionController.isAvailable
-            && stages.contains { $0.verification == .nfc }
+    private var hasUnavailableVerificationStage: Bool {
+        stages.contains { !verificationIsAvailable($0.verification) }
+    }
+
+    private var allVerificationToolsArePrepared: Bool {
+        stages.allSatisfy(verificationToolIsPrepared)
     }
 
     private var canContinue: Bool {
-        allTreasuresAreHidden && !hasUnavailableNFCStage
+        allTreasuresAreHidden
+            && allVerificationToolsArePrepared
+            && !hasUnavailableVerificationStage
     }
 
     var body: some View {
@@ -43,9 +48,9 @@ struct HuntPreparationView: View {
                     introduction
                     progress
 
-                    if hasUnavailableNFCStage {
+                    if hasUnavailableVerificationStage {
                         Label(
-                            "この端末ではNFCを使えません。いったん閉じて、NFCの宝をQRコードなどへ変更してください。",
+                            "この端末で使えない発見方法があります。いったん閉じて、合言葉などへ変更してください。",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.subheadline.weight(.semibold))
@@ -87,8 +92,13 @@ struct HuntPreparationView: View {
                             .buttonStyle(TreasurePrimaryButtonStyle())
                             .disabled(!canContinue)
 
-                        if hasUnavailableNFCStage {
-                            Text("NFCの宝は、この端末で使える発見方法へ変更してください")
+                        if hasUnavailableVerificationStage {
+                            Text("使えない発見方法を、この端末で利用できる方法へ変更してください")
+                                .font(.caption.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(TreasureTheme.coral)
+                        } else if !allVerificationToolsArePrepared {
+                            Text("QRコードの表示・共有とNFCタグへの書き込みを完了してください")
                                 .font(.caption.weight(.semibold))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(TreasureTheme.coral)
@@ -169,12 +179,37 @@ struct HuntPreparationView: View {
     }
 
     private func toggleHidden(_ stage: TreasureStage) {
+        guard verificationToolIsPrepared(stage) else { return }
+
         withAnimation(.easeInOut(duration: 0.2)) {
             if hiddenStageIDs.contains(stage.id) {
                 hiddenStageIDs.remove(stage.id)
             } else {
                 hiddenStageIDs.insert(stage.id)
             }
+        }
+    }
+
+    private func verificationToolIsPrepared(_ stage: TreasureStage) -> Bool {
+        TreasurePreparationRequirement.isToolPrepared(
+            verification: stage.verification,
+            qrCodeWasDisplayed: displayedQRCodeStageIDs.contains(stage.id),
+            qrCodeIsSupported: QRCodeScannerCapability.isSupported,
+            nfcWasWritten: writtenNFCStageIDs.contains(stage.id),
+            nfcIsAvailable: NFCSessionController.isAvailable
+        )
+    }
+
+    private func verificationIsAvailable(
+        _ verification: TreasureVerification
+    ) -> Bool {
+        switch verification {
+        case .qrCode:
+            QRCodeScannerCapability.isSupported
+        case .nfc:
+            NFCSessionController.isAvailable
+        case .honesty, .passphrase:
+            true
         }
     }
 }
@@ -271,7 +306,7 @@ private struct PreparationStageCard: View {
                 )
             }
             .buttonStyle(.plain)
-            .disabled(!verificationIsAvailable)
+            .disabled(!verificationToolIsPrepared)
         }
         .treasureCard()
     }
@@ -301,25 +336,33 @@ private struct PreparationStageCard: View {
             }
 
         case .qrCode:
-            VStack(alignment: .leading, spacing: 10) {
-                Button(action: onShowQRCode) {
-                    Label(
-                        isQRCodeDisplayed ? "QRコードをもう一度表示" : "QRコードを表示・共有",
-                        systemImage: "qrcode"
-                    )
-                }
-                .buttonStyle(.bordered)
+            if QRCodeScannerCapability.isSupported {
+                VStack(alignment: .leading, spacing: 10) {
+                    Button(action: onShowQRCode) {
+                        Label(
+                            isQRCodeDisplayed ? "QRコードをもう一度表示" : "QRコードを表示・共有",
+                            systemImage: "qrcode"
+                        )
+                    }
+                    .buttonStyle(.bordered)
 
-                Button(action: onTestQRCode) {
-                    Label(
-                        isTested ? "QRコードをもう一度テスト" : "QRコードを読み取りテスト",
-                        systemImage: isTested ? "checkmark.circle.fill" : "qrcode.viewfinder"
-                    )
-                }
-                .buttonStyle(.bordered)
-                .tint(isTested ? TreasureTheme.teal : TreasureTheme.ink)
+                    Button(action: onTestQRCode) {
+                        Label(
+                            isTested ? "QRコードをもう一度テスト" : "QRコードを読み取りテスト",
+                            systemImage: isTested ? "checkmark.circle.fill" : "qrcode.viewfinder"
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(isTested ? TreasureTheme.teal : TreasureTheme.ink)
 
-                VerificationTestStatus(isTested: isTested)
+                    VerificationTestStatus(isTested: isTested)
+                }
+            } else {
+                PreparationNote(
+                    icon: "exclamationmark.triangle.fill",
+                    text: "この端末ではQRコードを読み取れません。発見方法を変更してください。"
+                )
+                .foregroundStyle(TreasureTheme.coral)
             }
 
         case .nfc:
@@ -361,14 +404,60 @@ private struct PreparationStageCard: View {
     }
 
     private var verificationIsAvailable: Bool {
-        stage.verification != .nfc || NFCSessionController.isAvailable
+        switch stage.verification {
+        case .qrCode:
+            QRCodeScannerCapability.isSupported
+        case .nfc:
+            NFCSessionController.isAvailable
+        case .honesty, .passphrase:
+            true
+        }
+    }
+
+    private var verificationToolIsPrepared: Bool {
+        TreasurePreparationRequirement.isToolPrepared(
+            verification: stage.verification,
+            qrCodeWasDisplayed: isQRCodeDisplayed,
+            qrCodeIsSupported: QRCodeScannerCapability.isSupported,
+            nfcWasWritten: isNFCWritten,
+            nfcIsAvailable: NFCSessionController.isAvailable
+        )
     }
 
     private var hiddenButtonTitle: String {
         if !verificationIsAvailable {
             return "先に発見方法を変更してください"
         }
+        if !verificationToolIsPrepared {
+            switch stage.verification {
+            case .qrCode:
+                return "先にQRコードを表示・共有してください"
+            case .nfc:
+                return "先にNFCタグへ書き込んでください"
+            case .honesty, .passphrase:
+                break
+            }
+        }
         return isHidden ? "宝を隠しました" : "宝を隠したらチェック"
+    }
+}
+
+enum TreasurePreparationRequirement {
+    nonisolated static func isToolPrepared(
+        verification: TreasureVerification,
+        qrCodeWasDisplayed: Bool,
+        qrCodeIsSupported: Bool,
+        nfcWasWritten: Bool,
+        nfcIsAvailable: Bool
+    ) -> Bool {
+        switch verification {
+        case .honesty, .passphrase:
+            return true
+        case .qrCode:
+            return qrCodeIsSupported && qrCodeWasDisplayed
+        case .nfc:
+            return nfcIsAvailable && nfcWasWritten
+        }
     }
 }
 

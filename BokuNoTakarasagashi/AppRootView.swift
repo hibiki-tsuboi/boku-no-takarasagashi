@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import LocalAuthentication
 import SwiftData
 import SwiftUI
 
@@ -16,6 +17,9 @@ struct AppRootView: View {
     @State private var playingHunt: TreasureHunt?
     @State private var isShowingOpeningVideo: Bool
     @State private var hasResolvedInitialSession = false
+    @State private var parentAccessIsAuthorized = false
+    @State private var isAuthenticatingParent = false
+    @State private var parentAccessError: String?
     @StateObject private var musicCoordinator = BackgroundMusicCoordinator()
 
     init(automaticallyShowsOpening: Bool = true) {
@@ -30,11 +34,18 @@ struct AppRootView: View {
                 destinationContent
                     .id(destination)
                     .transition(.opacity)
+                    .allowsHitTesting(!isShowingOpeningVideo)
+                    .accessibilityHidden(isShowingOpeningVideo)
 
                 if isShowingOpeningVideo {
                     OpeningVideoView(onFinished: finishOpeningVideo)
                         .transition(.opacity)
                         .zIndex(10)
+                }
+
+                if destination == .parent, scenePhase != .active {
+                    privacyShield
+                        .zIndex(20)
                 }
             } else {
                 TreasureBackgroundArtwork(style: .adventureSelection)
@@ -55,6 +66,9 @@ struct AppRootView: View {
             if newPhase == .active, destination != .parent {
                 resumeLockedSessionIfNeeded()
             }
+            if newPhase == .background {
+                closeParentDashboard()
+            }
             updateMusic()
         }
         .onChange(of: playingHunt?.id) {
@@ -72,6 +86,11 @@ struct AppRootView: View {
             PlaySessionView(hunt: hunt)
                 .environmentObject(musicCoordinator)
         }
+        .alert("おうちの人を確認できませんでした", isPresented: parentAccessErrorIsPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(parentAccessError ?? "もう一度ためしてください。")
+        }
     }
 
     @ViewBuilder
@@ -82,7 +101,7 @@ struct AppRootView: View {
                 resumableHunt: resumableHunt,
                 onStart: { show(.adventures) },
                 onResume: { playingHunt = $0 },
-                onOpenParent: { show(.parent) },
+                onOpenParent: requestParentAccess,
                 onPlayOpening: showOpeningVideo
             )
 
@@ -90,15 +109,32 @@ struct AppRootView: View {
             AdventureSelectionView(
                 hunts: hunts,
                 onPlay: { playingHunt = $0 },
-                onOpenParent: { show(.parent) },
+                onOpenParent: requestParentAccess,
                 onShowTitle: { show(.title) }
             )
 
         case .parent:
-            ContentView(
-                onShowTitle: { show(.title) }
-            )
+            if parentAccessIsAuthorized {
+                ContentView(onShowTitle: closeParentDashboard)
+            } else {
+                privacyShield
+            }
         }
+    }
+
+    private var privacyShield: some View {
+        TreasureBackgroundArtwork(style: .security)
+            .overlay {
+                VStack(spacing: 12) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 40))
+                    Text("おうちの人専用")
+                        .font(.title2.bold())
+                }
+                .foregroundStyle(TreasureTheme.ink)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("おうちの人専用画面はロックされています")
     }
 
     private var resumableHunt: TreasureHunt? {
@@ -138,6 +174,48 @@ struct AppRootView: View {
         }
         isShowingOpeningVideo = false
         playingHunt = lockedHunt
+    }
+
+    private var parentAccessErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { parentAccessError != nil },
+            set: { isPresented in
+                if !isPresented {
+                    parentAccessError = nil
+                }
+            }
+        )
+    }
+
+    private func requestParentAccess() {
+        guard !isAuthenticatingParent else { return }
+        isAuthenticatingParent = true
+        parentAccessError = nil
+
+        Task {
+            defer {
+                isAuthenticatingParent = false
+            }
+
+            do {
+                try await ParentAccessAuthenticator.authenticate()
+                parentAccessIsAuthorized = true
+                show(.parent)
+            } catch let error as LAError where error.code == .userCancel
+                || error.code == .appCancel
+                || error.code == .systemCancel {
+                return
+            } catch {
+                parentAccessError = error.localizedDescription
+            }
+        }
+    }
+
+    private func closeParentDashboard() {
+        parentAccessIsAuthorized = false
+        if destination == .parent {
+            show(.title)
+        }
     }
 
     private func show(_ newDestination: AppDestination) {

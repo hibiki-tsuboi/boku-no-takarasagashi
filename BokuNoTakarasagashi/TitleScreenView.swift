@@ -55,7 +55,7 @@ struct TitleScreenView: View {
                     .padding(.horizontal, 24)
                     .padding(
                         .bottom,
-                        max(proxy.safeAreaInsets.bottom, 16)
+                        max(proxy.safeAreaInsets.bottom, 16) + 32
                     )
                     .opacity(controlsAreVisible ? 1 : 0)
                     .offset(y: controlsAreVisible ? 0 : 24)

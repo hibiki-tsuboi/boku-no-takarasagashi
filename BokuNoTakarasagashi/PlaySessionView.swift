@@ -18,7 +18,7 @@ struct PlaySessionView: View {
 
     @State private var phase: PlayPhase
     @State private var safetyIsConfirmed = false
-    @State private var isShowingReturnConfirmation = false
+    @State private var isShowingCancellationConfirmation = false
     @State private var isShowingQRCodeScanner = false
     @State private var isShowingDiscovery = false
     @State private var isShowingExtraHintConfirmation = false
@@ -32,17 +32,12 @@ struct PlaySessionView: View {
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
-    init(
-        hunt: TreasureHunt,
-        startsInPreparation: Bool = false
-    ) {
+    init(hunt: TreasureHunt) {
         self.hunt = hunt
 
         let initialPhase: PlayPhase
         if hunt.isChildModeLocked {
             initialPhase = hunt.playState == .completed ? .completed : .playing
-        } else if hunt.playState == .inProgress && !startsInPreparation {
-            initialPhase = .handoff
         } else {
             initialPhase = .preparation
         }
@@ -78,7 +73,6 @@ struct PlaySessionView: View {
                 case .handoff:
                     HandoffView(
                         hunt: hunt,
-                        isResuming: hunt.playState == .inProgress,
                         onClose: { dismiss() },
                         onStart: startPlaying
                     )
@@ -90,9 +84,7 @@ struct PlaySessionView: View {
                     CompletionView(
                         hunt: hunt,
                         record: completedRecord,
-                        onReturnToMenu: {
-                            isShowingReturnConfirmation = true
-                        }
+                        onReturnToMenu: finishAndReturnToMenu
                     )
                 }
             }
@@ -111,12 +103,12 @@ struct PlaySessionView: View {
         }
         .tint(TreasureTheme.teal)
         .interactiveDismissDisabled(hunt.isChildModeLocked)
-        .sheet(isPresented: $isShowingReturnConfirmation) {
-            ReturnToMenuConfirmationView(
+        .sheet(isPresented: $isShowingCancellationConfirmation) {
+            CancelAdventureConfirmationView(
                 onCancel: {
-                    isShowingReturnConfirmation = false
+                    isShowingCancellationConfirmation = false
                 },
-                onConfirm: returnToMenu
+                onConfirm: cancelAndReturnToMenu
             )
         }
         .fullScreenCover(isPresented: $isShowingQRCodeScanner) {
@@ -193,7 +185,7 @@ struct PlaySessionView: View {
             VStack(spacing: 0) {
                 HStack {
                     Button {
-                        isShowingReturnConfirmation = true
+                        isShowingCancellationConfirmation = true
                     } label: {
                         Label(
                             "おうちの人にわたす",
@@ -241,7 +233,7 @@ struct PlaySessionView: View {
                 Text("おうちの人にiPhoneをわたしてください。")
             } actions: {
                 Button {
-                    isShowingReturnConfirmation = true
+                    isShowingCancellationConfirmation = true
                 } label: {
                     Label(
                         "おうちの人にわたす",
@@ -408,7 +400,7 @@ struct PlaySessionView: View {
                         .foregroundStyle(TreasureTheme.secondaryText)
 
                     Button {
-                        isShowingReturnConfirmation = true
+                        isShowingCancellationConfirmation = true
                     } label: {
                         Label(
                             "おうちの人にわたす",
@@ -518,11 +510,7 @@ struct PlaySessionView: View {
             return
         }
 
-        if hunt.playState == .inProgress {
-            hunt.resumeGame()
-        } else {
-            hunt.startNewGame()
-        }
+        hunt.startNewGame()
         guard saveProgress() else { return }
 
         withAnimation(reduceMotion ? nil : .easeInOut) {
@@ -542,7 +530,7 @@ struct PlaySessionView: View {
                 .foregroundStyle(TreasureTheme.secondaryText)
 
             Button {
-                isShowingReturnConfirmation = true
+                isShowingCancellationConfirmation = true
             } label: {
                 Label(
                     "おうちの人にわたす",
@@ -630,13 +618,19 @@ struct PlaySessionView: View {
         }
     }
 
-    private func returnToMenu() {
-        hunt.endPlaySession()
+    private func cancelAndReturnToMenu() {
+        hunt.cancelGame()
         guard saveProgress() else {
-            isShowingReturnConfirmation = false
+            isShowingCancellationConfirmation = false
             return
         }
-        isShowingReturnConfirmation = false
+        isShowingCancellationConfirmation = false
+        dismiss()
+    }
+
+    private func finishAndReturnToMenu() {
+        hunt.endPlaySession()
+        guard saveProgress() else { return }
         dismiss()
     }
 
@@ -694,7 +688,7 @@ private enum PlayPhase {
     case completed
 }
 
-private struct ReturnToMenuConfirmationView: View {
+private struct CancelAdventureConfirmationView: View {
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
@@ -706,22 +700,23 @@ private struct ReturnToMenuConfirmationView: View {
 
                     ZStack {
                         Circle()
-                            .fill(TreasureTheme.teal.opacity(0.14))
+                            .fill(TreasureTheme.coral.opacity(0.14))
 
-                        Image(systemName: "person.2.fill")
+                        Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 42))
-                            .foregroundStyle(TreasureTheme.tealText)
+                            .foregroundStyle(TreasureTheme.coralText)
                     }
                     .frame(width: 88, height: 88)
                     .accessibilityHidden(true)
 
                     VStack(spacing: 9) {
-                        Text("おうちの人にわたした？")
+                        Text("冒険を中止する？")
                             .font(.title2.bold())
                             .foregroundStyle(TreasureTheme.ink)
 
                         Text(
-                            "この先は宝探しを作ったり編集したりする画面です。"
+                            "ここまでの進み具合は取り消され、"
+                                + "次は最初のヒントから始まります。"
                                 + "iPhoneをおうちの人にわたしてから進んでください。"
                         )
                         .multilineTextAlignment(.center)
@@ -729,13 +724,15 @@ private struct ReturnToMenuConfirmationView: View {
                     }
                     .treasureCard()
 
-                    Button(action: onConfirm) {
+                    Button(role: .destructive, action: onConfirm) {
                         Label(
-                            "わたしました",
-                            systemImage: "checkmark.circle.fill"
+                            "中止してメニューへ戻る",
+                            systemImage: "xmark.circle.fill"
                         )
+                        .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(TreasurePrimaryButtonStyle())
+                    .buttonStyle(.borderedProminent)
+                    .tint(TreasureTheme.dangerBackground)
 
                     Button("まだ遊ぶ", action: onCancel)
                         .buttonStyle(.bordered)
@@ -747,7 +744,7 @@ private struct ReturnToMenuConfirmationView: View {
                 .padding(24)
                 .frame(maxWidth: .infinity)
             }
-            .navigationTitle("メニューへ戻る")
+            .navigationTitle("冒険を中止")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -874,14 +871,13 @@ private struct SafetyRow: View {
 
 private struct HandoffView: View {
     let hunt: TreasureHunt
-    let isResuming: Bool
     let onClose: () -> Void
     let onStart: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             PlaySetupHeader(
-                title: isResuming ? "冒険のつづき" : "準備できました",
+                title: "準備できました",
                 onClose: onClose
             )
 
@@ -900,7 +896,7 @@ private struct HandoffView: View {
                     .accessibilityHidden(true)
 
                     VStack(spacing: 8) {
-                        Text(isResuming ? "さがす人にわたそう" : "冒険をはじめよう！")
+                        Text("冒険をはじめよう！")
                             .font(.title.bold())
                             .foregroundStyle(TreasureTheme.ink)
 
@@ -923,9 +919,7 @@ private struct HandoffView: View {
                         }
 
                         Label(
-                            isResuming
-                                ? "宝 \(hunt.currentStageIndex + 1) から再開"
-                                : "宝は \(hunt.stages.count)こ",
+                            "宝は \(hunt.stages.count)こ",
                             systemImage: "gift.fill"
                         )
                         .font(.subheadline.bold())
@@ -947,10 +941,7 @@ private struct HandoffView: View {
                     }
                     .treasureCompactCard()
 
-                    Button(
-                        isResuming ? "つづきをスタート" : "冒険スタート",
-                        action: onStart
-                    )
+                    Button("冒険スタート", action: onStart)
                     .buttonStyle(TreasurePrimaryButtonStyle())
                 }
                 .padding(.horizontal, 20)
@@ -1159,8 +1150,8 @@ private struct CompletionView: View {
                     onReturnToMenu()
                 } label: {
                     Label(
-                        "おうちの人にわたす",
-                        systemImage: "person.crop.circle"
+                        "メニューへ戻る",
+                        systemImage: "house.fill"
                     )
                 }
                 .buttonStyle(TreasurePrimaryButtonStyle())

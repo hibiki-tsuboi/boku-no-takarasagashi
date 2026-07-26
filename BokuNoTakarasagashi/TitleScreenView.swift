@@ -6,9 +6,7 @@
 import SwiftUI
 
 struct TitleScreenView: View {
-    let resumableHunt: TreasureHunt?
     let onStart: () -> Void
-    let onResume: (TreasureHunt) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -53,27 +51,6 @@ struct TitleScreenView: View {
                             )
                         }
                         .buttonStyle(TitlePrimaryButtonStyle())
-
-                        if let resumableHunt {
-                            Button {
-                                onResume(resumableHunt)
-                            } label: {
-                                Label(
-                                    "つづきから",
-                                    systemImage: "arrow.right.circle.fill"
-                                )
-                            }
-                            .buttonStyle(TitleSecondaryButtonStyle())
-                            .accessibilityHint(
-                                "\(resumableHunt.title)を再開します"
-                            )
-                            .transition(
-                                .opacity.combined(
-                                    with: .move(edge: .bottom)
-                                )
-                            )
-                        }
-
                     }
                     .padding(.horizontal, 24)
                     .padding(
@@ -152,36 +129,6 @@ private struct TitlePrimaryButtonStyle: ButtonStyle {
     }
 }
 
-private struct TitleSecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .background(
-                Color.black.opacity(
-                    TreasureTheme.titleSecondaryScrimOpacity
-                ),
-                in: RoundedRectangle(cornerRadius: 17)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 17)
-                    .stroke(.white.opacity(0.42), lineWidth: 1)
-            }
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.86 : 1)
-            .animation(
-                .easeOut(duration: 0.14),
-                value: configuration.isPressed
-            )
-    }
-}
-
 #Preview {
-    TitleScreenView(
-        resumableHunt: nil,
-        onStart: {},
-        onResume: { _ in }
-    )
+    TitleScreenView(onStart: {})
 }

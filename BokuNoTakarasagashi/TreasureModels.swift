@@ -193,9 +193,12 @@ final class TreasureHunt {
         updatedAt = .now
     }
 
-    func resumeGame() {
-        playState = .inProgress
-        isChildModeLocked = true
+    func cancelGame() {
+        currentStageIndex = 0
+        playState = .ready
+        isChildModeLocked = false
+        revealedExtraHintStageID = nil
+        extraHintsUsedCount = 0
         updatedAt = .now
     }
 

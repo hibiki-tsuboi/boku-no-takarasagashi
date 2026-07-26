@@ -277,11 +277,6 @@ final class LowRiskRegressionTests: XCTestCase {
             over: TreasureTheme.blackComponents,
             opacity: TreasureTheme.cardSurfaceOpacity
         )
-        let brightestTitleSecondarySurface =
-            TreasureTheme.blackComponents.composited(
-                over: TreasureTheme.whiteComponents,
-                opacity: TreasureTheme.titleSecondaryScrimOpacity
-            )
 
         XCTAssertGreaterThanOrEqual(
             TreasureTheme.whiteComponents.contrastRatio(
@@ -304,12 +299,6 @@ final class LowRiskRegressionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(
             TreasureTheme.tealComponents.contrastRatio(
                 with: minimumCardSurface
-            ),
-            4.5
-        )
-        XCTAssertGreaterThanOrEqual(
-            TreasureTheme.whiteComponents.contrastRatio(
-                with: brightestTitleSecondarySurface
             ),
             4.5
         )

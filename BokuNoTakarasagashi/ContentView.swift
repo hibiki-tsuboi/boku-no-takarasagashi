@@ -22,7 +22,6 @@ struct ContentView: View {
     @State private var editingHunt: TreasureHunt?
     @State private var playingHunt: TreasureHunt?
     @State private var huntToPrepareAfterPreview: TreasureHunt?
-    @State private var startsPlayingInPreparation = false
     @State private var huntActionRequest: HuntActionRequest?
     @State private var importCandidate: HuntImportCandidate?
     @State private var importError: String?
@@ -135,14 +134,8 @@ struct ContentView: View {
         .sheet(item: $importCandidate) { candidate in
             HuntImportView(validatedPackage: candidate.validatedPackage)
         }
-        .fullScreenCover(
-            item: $playingHunt,
-            onDismiss: { startsPlayingInPreparation = false }
-        ) { hunt in
-            PlaySessionView(
-                hunt: hunt,
-                startsInPreparation: startsPlayingInPreparation
-            )
+        .fullScreenCover(item: $playingHunt) { hunt in
+            PlaySessionView(hunt: hunt)
         }
         .fileImporter(
             isPresented: $isImportingHunt,
@@ -315,19 +308,16 @@ struct ContentView: View {
 
     private func resumeLockedSessionIfNeeded() {
         guard playingHunt == nil else { return }
-        startsPlayingInPreparation = false
         playingHunt = hunts.first(where: \.isChildModeLocked)
     }
 
     private func startPlaying(_ hunt: TreasureHunt) {
-        startsPlayingInPreparation = false
         playingHunt = hunt
     }
 
     private func startPreparationAfterPreview() {
         guard let hunt = huntToPrepareAfterPreview else { return }
         huntToPrepareAfterPreview = nil
-        startsPlayingInPreparation = true
         playingHunt = hunt
     }
 
@@ -495,24 +485,6 @@ private struct HuntCard: View {
                 .accessibilityLabel("\(hunt.title)の管理メニュー")
             }
 
-            if hunt.playState == .inProgress, !hunt.stages.isEmpty {
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack {
-                        Text("いまの場所")
-                        Spacer()
-                        Text("\(min(hunt.currentStageIndex + 1, hunt.stages.count)) / \(hunt.stages.count)")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(TreasureTheme.secondaryText)
-
-                    ProgressView(
-                        value: Double(min(hunt.currentStageIndex, hunt.stages.count)),
-                        total: Double(hunt.stages.count)
-                    )
-                    .tint(TreasureTheme.gold)
-                }
-            }
-
             Button(action: onPlay) {
                 Label(playButtonTitle, systemImage: playButtonIcon)
             }
@@ -526,7 +498,7 @@ private struct HuntCard: View {
         case .ready:
             "準備できました"
         case .inProgress:
-            "冒険の途中"
+            "冒険中"
         case .completed:
             "クリア"
         }
@@ -570,14 +542,16 @@ private struct HuntCard: View {
         case .ready:
             "この冒険をはじめる"
         case .inProgress:
-            "つづきから"
+            "最初からはじめる"
         case .completed:
             "もういちど遊ぶ"
         }
     }
 
     private var playButtonIcon: String {
-        hunt.playState == .inProgress ? "arrow.right.circle.fill" : "play.fill"
+        hunt.playState == .inProgress
+            ? "arrow.counterclockwise.circle.fill"
+            : "play.fill"
     }
 }
 

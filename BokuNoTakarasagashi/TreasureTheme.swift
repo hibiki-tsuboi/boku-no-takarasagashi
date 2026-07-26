@@ -106,7 +106,6 @@ enum TreasureTheme {
     )
 
     static let cardSurfaceOpacity = 0.96
-    static let titleSecondaryScrimOpacity = 0.58
 
     static let ink = inkComponents.color
     static let teal = tealComponents.color

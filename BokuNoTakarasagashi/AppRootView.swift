@@ -111,19 +111,11 @@ struct AppRootView: View {
     private var destinationContent: some View {
         switch destination {
         case .title:
-            TitleScreenView(
-                resumableHunt: resumableHunt,
-                onStart: { show(.home) },
-                onResume: { playingHunt = $0 }
-            )
+            TitleScreenView(onStart: { show(.home) })
 
         case .home:
             ContentView(onShowTitle: { show(.title) })
         }
-    }
-
-    private var resumableHunt: TreasureHunt? {
-        lockedHunt ?? hunts.first { $0.playState == .inProgress }
     }
 
     private var lockedHunt: TreasureHunt? {

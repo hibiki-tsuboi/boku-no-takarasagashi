@@ -11,17 +11,41 @@ import XCTest
 
 final class MediumRiskRegressionTests: XCTestCase {
     @MainActor
-    func testEndingPlaySessionClearsActiveSessionLock() {
+    func testCancellingGameResetsProgressAndClearsActiveSessionLock() {
         let hunt = TreasureHunt(
-            title: "受け渡しテスト",
+            title: "中止テスト",
+            openingMessage: "",
+            completionMessage: ""
+        )
+        let revealedStageID = UUID()
+
+        hunt.startNewGame()
+        hunt.currentStageIndex = 2
+        hunt.revealExtraHint(for: revealedStageID)
+        XCTAssertTrue(hunt.isChildModeLocked)
+
+        hunt.cancelGame()
+
+        XCTAssertEqual(hunt.playState, .ready)
+        XCTAssertEqual(hunt.currentStageIndex, 0)
+        XCTAssertFalse(hunt.isChildModeLocked)
+        XCTAssertNil(hunt.revealedExtraHintStageID)
+        XCTAssertEqual(hunt.usedExtraHintCount, 0)
+    }
+
+    @MainActor
+    func testEndingCompletedSessionPreservesCompletionAndClearsLock() {
+        let hunt = TreasureHunt(
+            title: "クリアテスト",
             openingMessage: "",
             completionMessage: ""
         )
 
         hunt.startNewGame()
-        XCTAssertTrue(hunt.isChildModeLocked)
-
+        hunt.completeGame()
         hunt.endPlaySession()
+
+        XCTAssertEqual(hunt.playState, .completed)
         XCTAssertFalse(hunt.isChildModeLocked)
     }
 

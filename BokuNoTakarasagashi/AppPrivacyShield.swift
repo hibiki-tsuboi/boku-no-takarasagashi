@@ -9,7 +9,6 @@ import UIKit
 
 enum AppPrivacyShieldMode: Equatable {
     case background
-    case parentLocked(isAuthenticating: Bool, errorMessage: String?)
 }
 
 @MainActor
@@ -17,22 +16,16 @@ final class AppPrivacyShieldWindowController: ObservableObject {
     private var hostingController: UIHostingController<AnyView>?
 
     func update(
-        mode: AppPrivacyShieldMode?,
-        onUnlock: @escaping () -> Void,
-        onExit: @escaping () -> Void
+        mode: AppPrivacyShieldMode?
     ) {
-        guard let mode else {
+        guard mode != nil else {
             hide()
             return
         }
         guard let window = applicationWindow else { return }
 
         let rootView = AnyView(
-            AppPrivacyShieldContent(
-                mode: mode,
-                onUnlock: onUnlock,
-                onExit: onExit
-            )
+            AppPrivacyShieldContent()
         )
 
         if let hostingController {
@@ -79,50 +72,16 @@ final class AppPrivacyShieldWindowController: ObservableObject {
 }
 
 private struct AppPrivacyShieldContent: View {
-    let mode: AppPrivacyShieldMode
-    let onUnlock: () -> Void
-    let onExit: () -> Void
-
     var body: some View {
         TreasureBackgroundArtwork(style: .security)
             .overlay {
                 VStack(spacing: 18) {
-                    Image(systemName: "lock.shield.fill")
+                    Image(systemName: "map.fill")
                         .font(.system(size: 44))
                         .accessibilityHidden(true)
 
-                    Text("おうちの人専用")
+                    Text("ぼくの宝探し")
                         .font(.title2.bold())
-
-                    if case let .parentLocked(isAuthenticating, errorMessage) = mode {
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(.footnote.weight(.semibold))
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(TreasureTheme.coralText)
-                                .frame(maxWidth: 320)
-                        }
-
-                        Button(action: onUnlock) {
-                            if isAuthenticating {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity)
-                            } else {
-                                Label(
-                                    "認証して編集に戻る",
-                                    systemImage: "faceid"
-                                )
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .buttonStyle(TreasurePrimaryButtonStyle())
-                        .disabled(isAuthenticating)
-                        .frame(maxWidth: 320)
-
-                        Button("タイトルへ戻る", action: onExit)
-                            .buttonStyle(.bordered)
-                            .disabled(isAuthenticating)
-                    }
                 }
                 .frame(maxWidth: 368)
                 .treasureCard()
@@ -130,7 +89,7 @@ private struct AppPrivacyShieldContent: View {
                 .foregroundStyle(TreasureTheme.ink)
             }
             .ignoresSafeArea()
-            .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isModal)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("アプリの内容を非表示にしています")
     }
 }

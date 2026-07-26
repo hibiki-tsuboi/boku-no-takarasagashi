@@ -41,24 +41,20 @@ enum HuntTransferService {
         let copy = try makeHunt(
             from: package,
             title: copyTitle,
-            parentPIN: "0000",
             in: modelContext
         )
-        copy.parentPINDigest = source.parentPINDigest
         try modelContext.save()
         return copy
     }
 
     static func importHunt(
         from validatedPackage: ValidatedHuntTransferPackage,
-        parentPIN: String,
         in modelContext: ModelContext
     ) throws -> TreasureHunt {
         let package = validatedPackage.package
         let hunt = try makeHunt(
             from: package,
             title: package.title,
-            parentPIN: parentPIN,
             in: modelContext
         )
         try modelContext.save()
@@ -124,14 +120,12 @@ enum HuntTransferService {
     private static func makeHunt(
         from package: HuntTransferPackage,
         title: String,
-        parentPIN: String,
         in modelContext: ModelContext
     ) throws -> TreasureHunt {
         let hunt = TreasureHunt(
             title: title,
             openingMessage: package.openingMessage,
-            completionMessage: package.completionMessage,
-            parentPIN: parentPIN
+            completionMessage: package.completionMessage
         )
         modelContext.insert(hunt)
 

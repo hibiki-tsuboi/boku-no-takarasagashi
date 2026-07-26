@@ -135,7 +135,7 @@ struct HuntPreviewView: View {
                 .foregroundStyle(TreasureTheme.tealText)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("保護者プレビュー")
+                Text("プレビュー")
                     .font(.subheadline.bold())
                     .foregroundStyle(TreasureTheme.ink)
 

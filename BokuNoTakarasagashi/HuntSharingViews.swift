@@ -6,7 +6,7 @@
 import SwiftData
 import SwiftUI
 
-enum HuntParentAction: Equatable {
+enum HuntManagementAction: Equatable {
     case preview
     case duplicate
     case share
@@ -15,7 +15,7 @@ enum HuntParentAction: Equatable {
 struct HuntActionRequest: Identifiable {
     let id = UUID()
     let hunt: TreasureHunt
-    let action: HuntParentAction
+    let action: HuntManagementAction
 }
 
 struct HuntImportCandidate: Identifiable {
@@ -23,57 +23,49 @@ struct HuntImportCandidate: Identifiable {
     let validatedPackage: ValidatedHuntTransferPackage
 }
 
-struct ProtectedHuntActionView: View {
+struct HuntActionView: View {
     let request: HuntActionRequest
     let onPrepare: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var isUnlocked = false
     @State private var duplicatedTitle: String?
     @State private var operationError: String?
 
     var body: some View {
-        if isUnlocked {
-            NavigationStack {
-                TreasureBackground(style: backgroundStyle) {
-                    switch request.action {
-                    case .preview:
-                        HuntPreviewView(
-                            hunt: request.hunt,
-                            onPrepare: onPrepare
-                        )
-                    case .duplicate:
-                        duplicateResult
-                    case .share:
-                        HuntShareContent(hunt: request.hunt)
-                    }
+        NavigationStack {
+            TreasureBackground(style: backgroundStyle) {
+                switch request.action {
+                case .preview:
+                    HuntPreviewView(
+                        hunt: request.hunt,
+                        onPrepare: onPrepare
+                    )
+                case .duplicate:
+                    duplicateResult
+                case .share:
+                    HuntShareContent(hunt: request.hunt)
                 }
-                .navigationTitle(navigationTitle)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("閉じる") {
-                            dismiss()
-                        }
+            }
+            .navigationTitle(navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("閉じる") {
+                        dismiss()
                     }
                 }
             }
-            .tint(TreasureTheme.teal)
-        } else {
-            ParentPINGateView(
-                expectedDigest: request.hunt.parentPINDigest,
-                onCancel: { dismiss() },
-                onUnlock: unlock
-            )
         }
+        .tint(TreasureTheme.teal)
+        .onAppear(perform: startRequestedActionIfNeeded)
     }
 
     private var navigationTitle: String {
         switch request.action {
         case .preview:
-            "保護者プレビュー"
+            "プレビュー"
         case .duplicate:
             "宝探しを複製"
         case .share:
@@ -86,7 +78,7 @@ struct ProtectedHuntActionView: View {
         case .preview:
             .playing
         case .duplicate, .share:
-            .parent
+            .home
         }
     }
 
@@ -116,10 +108,6 @@ struct ProtectedHuntActionView: View {
                 .treasureCompactCard()
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Label(
-                        "保護者PINは元の宝探しと同じです。",
-                        systemImage: "lock.fill"
-                    )
                     Label(
                         "QRコードとNFCタグの識別子は新しくなります。",
                         systemImage: "arrow.triangle.2.circlepath"
@@ -155,11 +143,13 @@ struct ProtectedHuntActionView: View {
         .padding(24)
     }
 
-    private func unlock() {
-        isUnlocked = true
-        if request.action == .duplicate {
-            duplicateHunt()
+    private func startRequestedActionIfNeeded() {
+        guard request.action == .duplicate,
+              duplicatedTitle == nil,
+              operationError == nil else {
+            return
         }
+        duplicateHunt()
     }
 
     private func duplicateHunt() {
@@ -232,8 +222,8 @@ private struct HuntShareContent: View {
                     )
 
                     Label(
-                        "保護者PINと冒険履歴は含みません",
-                        systemImage: "lock.shield.fill"
+                        "冒険履歴は含みません",
+                        systemImage: "clock.arrow.circlepath"
                     )
                 }
                 .font(.subheadline.weight(.semibold))
@@ -326,7 +316,6 @@ struct HuntImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var parentPIN = ""
     @State private var importError: String?
 
     private var package: HuntTransferPackage {
@@ -357,19 +346,6 @@ struct HuntImportView: View {
                     .padding(.vertical, 4)
                 } header: {
                     Text("読み込む宝探し")
-                }
-
-                Section {
-                    SecureField("4桁の数字", text: $parentPIN)
-                        .keyboardType(.numberPad)
-                        .textContentType(.oneTimeCode)
-                        .onChange(of: parentPIN) { _, newValue in
-                            parentPIN = ParentPIN.digitsOnly(newValue)
-                        }
-                } header: {
-                    Text("新しいおうちの人用PIN")
-                } footer: {
-                    Text("送った人のPINは共有されません。このiPhoneで使う4桁を設定してください。")
                 }
 
                 if requiresNewVerificationTools {
@@ -410,7 +386,7 @@ struct HuntImportView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .treasureBackground(.parent)
+            .treasureBackground(.home)
             .navigationTitle("宝探しを読み込む")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -423,7 +399,7 @@ struct HuntImportView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("読み込む", action: importHunt)
                         .fontWeight(.semibold)
-                        .disabled(parentPIN.count != 4 || unavailableVerification != nil)
+                        .disabled(unavailableVerification != nil)
                 }
             }
             .alert("読み込めませんでした", isPresented: errorIsPresented) {
@@ -466,7 +442,6 @@ struct HuntImportView: View {
     }
 
     private func importHunt() {
-        guard parentPIN.count == 4 else { return }
         guard unavailableVerification == nil else {
             importError = "この端末で使えない発見方法が含まれています。変更してから読み込んでください。"
             return
@@ -475,7 +450,6 @@ struct HuntImportView: View {
         do {
             _ = try HuntTransferService.importHunt(
                 from: validatedPackage,
-                parentPIN: parentPIN,
                 in: modelContext
             )
             dismiss()

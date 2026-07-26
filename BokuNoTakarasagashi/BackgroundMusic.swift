@@ -19,7 +19,7 @@ enum BackgroundMusicTrack: String, Equatable {
     case exploration08 = "bgm-exploration-08"
 
     static let adventureMenu = BackgroundMusicTrack.exploration01
-    static let parentMenu = BackgroundMusicTrack.exploration02
+    static let homeMenu = BackgroundMusicTrack.exploration02
 
     private static let gameplayTracks: [BackgroundMusicTrack] = [
         .exploration03,

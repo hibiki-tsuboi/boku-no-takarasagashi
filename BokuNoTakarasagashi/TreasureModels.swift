@@ -3,7 +3,6 @@
 //  BokuNoTakarasagashi
 //
 
-import CryptoKit
 import Foundation
 import SwiftData
 
@@ -140,7 +139,6 @@ final class TreasureHunt {
     var title: String
     var openingMessage: String
     var completionMessage: String
-    var parentPINDigest: String
     var createdAt: Date
     var updatedAt: Date
     var currentStageIndex: Int
@@ -155,14 +153,12 @@ final class TreasureHunt {
     init(
         title: String,
         openingMessage: String,
-        completionMessage: String,
-        parentPIN: String
+        completionMessage: String
     ) {
         id = UUID()
         self.title = title
         self.openingMessage = openingMessage
         self.completionMessage = completionMessage
-        parentPINDigest = ParentPIN.digest(parentPIN)
         createdAt = .now
         updatedAt = .now
         currentStageIndex = 0
@@ -222,7 +218,7 @@ final class TreasureHunt {
         updatedAt = .now
     }
 
-    func unlockChildMode() {
+    func endPlaySession() {
         isChildModeLocked = false
         updatedAt = .now
     }
@@ -356,30 +352,6 @@ nonisolated enum TreasurePayload {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
             .hasPrefix(prefix)
-    }
-}
-
-nonisolated enum ParentPIN {
-    static func digest(_ pin: String) -> String {
-        SHA256.hash(data: Data(digitsOnly(pin).utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
-    }
-
-    static func matches(_ pin: String, digest: String) -> Bool {
-        self.digest(pin) == digest
-    }
-
-    static func digitsOnly(_ value: String) -> String {
-        value.compactMap { character -> String? in
-            guard let number = character.wholeNumberValue,
-                  (0...9).contains(number) else {
-                return nil
-            }
-            return String(number)
-        }
-        .prefix(4)
-        .joined()
     }
 }
 

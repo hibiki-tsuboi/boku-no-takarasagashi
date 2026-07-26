@@ -11,13 +11,18 @@ import XCTest
 
 final class MediumRiskRegressionTests: XCTestCase {
     @MainActor
-    func testParentPINNormalizesAndMatches() {
-        let digest = ParentPIN.digest("1234")
+    func testEndingPlaySessionClearsActiveSessionLock() {
+        let hunt = TreasureHunt(
+            title: "受け渡しテスト",
+            openingMessage: "",
+            completionMessage: ""
+        )
 
-        XCTAssertTrue(ParentPIN.matches("1234", digest: digest))
-        XCTAssertTrue(ParentPIN.matches("１２３４", digest: digest))
-        XCTAssertFalse(ParentPIN.matches("4321", digest: digest))
-        XCTAssertEqual(ParentPIN.digitsOnly("1a２3-45"), "1234")
+        hunt.startNewGame()
+        XCTAssertTrue(hunt.isChildModeLocked)
+
+        hunt.endPlaySession()
+        XCTAssertFalse(hunt.isChildModeLocked)
     }
 
     @MainActor
@@ -147,8 +152,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         let hunt = TreasureHunt(
             title: "削除テスト",
             openingMessage: "",
-            completionMessage: "",
-            parentPIN: "1234"
+            completionMessage: ""
         )
         let stage = TreasureStage(
             orderIndex: 0,

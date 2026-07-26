@@ -131,8 +131,7 @@ enum TreasureTheme {
 }
 
 enum TreasureBackgroundStyle: String {
-    case adventureSelection = "BackgroundAdventureSelection"
-    case parent = "BackgroundParent"
+    case home = "BackgroundParent"
     case editor = "BackgroundEditor"
     case preparation = "BackgroundPreparation"
     case safety = "BackgroundSafety"
@@ -172,7 +171,7 @@ struct TreasureBackground<Content: View>: View {
     private let content: Content
 
     init(
-        style: TreasureBackgroundStyle = .parent,
+        style: TreasureBackgroundStyle = .home,
         @ViewBuilder content: () -> Content
     ) {
         self.style = style

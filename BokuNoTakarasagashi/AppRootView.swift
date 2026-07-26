@@ -3,7 +3,6 @@
 //  BokuNoTakarasagashi
 //
 
-import LocalAuthentication
 import SwiftData
 import SwiftUI
 
@@ -18,9 +17,6 @@ struct AppRootView: View {
     @State private var playingHunt: TreasureHunt?
     @State private var isShowingOpeningVideo: Bool
     @State private var hasResolvedInitialSession = false
-    @State private var parentAccessIsAuthorized = false
-    @State private var isAuthenticatingParent = false
-    @State private var parentAccessError: String?
     @StateObject private var audioSettings = AppAudioSettings()
     @StateObject private var musicCoordinator = BackgroundMusicCoordinator()
     @StateObject private var privacyShieldController =
@@ -46,13 +42,8 @@ struct AppRootView: View {
                         .transition(.opacity)
                         .zIndex(10)
                 }
-
-                if destination == .parent, !parentAccessIsAuthorized {
-                    privacyShield
-                        .zIndex(20)
-                }
             } else {
-                TreasureBackgroundArtwork(style: .adventureSelection)
+                TreasureBackgroundArtwork(style: .home)
             }
         }
         .animation(
@@ -83,53 +74,33 @@ struct AppRootView: View {
             updateMusic()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active, destination != .parent {
+            if newPhase == .active {
                 resumeLockedSessionIfNeeded()
             }
-            if newPhase == .background, destination == .parent {
-                parentAccessIsAuthorized = false
-                parentAccessError = nil
-            }
             updatePrivacyShield()
-            if newPhase == .active,
-               destination == .parent,
-               !parentAccessIsAuthorized {
-                requestParentAccess()
-            }
             updateMusic()
         }
         .onChange(of: destination) {
-            updatePrivacyShield()
-        }
-        .onChange(of: parentAccessIsAuthorized) {
-            updatePrivacyShield()
-        }
-        .onChange(of: isAuthenticatingParent) {
-            updatePrivacyShield()
-        }
-        .onChange(of: parentAccessError) {
             updatePrivacyShield()
         }
         .onChange(of: playingHunt?.id) {
             updateMusic()
         }
         .onChange(of: lockedHunt?.id) { _, lockedHuntID in
-            if lockedHuntID != nil, destination != .parent {
+            if lockedHuntID != nil {
                 resumeLockedSessionIfNeeded()
             }
         }
         .fullScreenCover(
             item: $playingHunt,
-            onDismiss: resumeLockedSessionIfNeeded
+            onDismiss: {
+                show(.home)
+                resumeLockedSessionIfNeeded()
+            }
         ) { hunt in
             PlaySessionView(hunt: hunt)
                 .environmentObject(musicCoordinator)
                 .environmentObject(audioSettings)
-        }
-        .alert("おうちの人を確認できませんでした", isPresented: parentAccessErrorIsPresented) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(parentAccessError ?? "もう一度ためしてください。")
         }
         .onDisappear {
             privacyShieldController.hide()
@@ -142,39 +113,13 @@ struct AppRootView: View {
         case .title:
             TitleScreenView(
                 resumableHunt: resumableHunt,
-                onStart: { show(.adventures) },
-                onResume: { playingHunt = $0 },
-                onOpenParent: requestParentAccess
+                onStart: { show(.home) },
+                onResume: { playingHunt = $0 }
             )
 
-        case .adventures:
-            AdventureSelectionView(
-                hunts: hunts,
-                onPlay: { playingHunt = $0 },
-                onOpenParent: requestParentAccess,
-                onShowTitle: { show(.title) }
-            )
-
-        case .parent:
-            ContentView(onShowTitle: closeParentDashboard)
-                .allowsHitTesting(parentAccessIsAuthorized)
-                .accessibilityHidden(!parentAccessIsAuthorized)
+        case .home:
+            ContentView(onShowTitle: { show(.title) })
         }
-    }
-
-    private var privacyShield: some View {
-        TreasureBackgroundArtwork(style: .security)
-            .overlay {
-                VStack(spacing: 12) {
-                    Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 40))
-                    Text("おうちの人専用")
-                        .font(.title2.bold())
-                }
-                .foregroundStyle(TreasureTheme.ink)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("おうちの人専用画面はロックされています")
     }
 
     private var resumableHunt: TreasureHunt? {
@@ -195,10 +140,8 @@ struct AppRootView: View {
         switch destination {
         case .title:
             return .title
-        case .adventures:
-            return .adventureMenu
-        case .parent:
-            return .parentMenu
+        case .home:
+            return .homeMenu
         }
     }
 
@@ -208,7 +151,8 @@ struct AppRootView: View {
     }
 
     private func resumeLockedSessionIfNeeded() {
-        guard playingHunt == nil,
+        guard destination == .title,
+              playingHunt == nil,
               let lockedHunt else {
             return
         }
@@ -216,72 +160,16 @@ struct AppRootView: View {
         playingHunt = lockedHunt
     }
 
-    private var parentAccessErrorIsPresented: Binding<Bool> {
-        Binding(
-            get: {
-                parentAccessError != nil
-                    && !(destination == .parent && !parentAccessIsAuthorized)
-            },
-            set: { isPresented in
-                if !isPresented {
-                    parentAccessError = nil
-                }
-            }
-        )
-    }
-
-    private func requestParentAccess() {
-        guard !isAuthenticatingParent else { return }
-        isAuthenticatingParent = true
-        parentAccessError = nil
-
-        Task {
-            defer {
-                isAuthenticatingParent = false
-            }
-
-            do {
-                try await ParentAccessAuthenticator.authenticate()
-                parentAccessIsAuthorized = true
-                if destination != .parent {
-                    show(.parent)
-                }
-            } catch let error as LAError where error.code == .userCancel
-                || error.code == .appCancel
-                || error.code == .systemCancel {
-                return
-            } catch {
-                parentAccessError = error.localizedDescription
-            }
-        }
-    }
-
-    private func closeParentDashboard() {
-        parentAccessIsAuthorized = false
-        parentAccessError = nil
-        if destination == .parent {
-            show(.title)
-        }
-    }
-
     private var privacyShieldMode: AppPrivacyShieldMode? {
         if scenePhase != .active {
             return .background
-        }
-        if destination == .parent, !parentAccessIsAuthorized {
-            return .parentLocked(
-                isAuthenticating: isAuthenticatingParent,
-                errorMessage: parentAccessError
-            )
         }
         return nil
     }
 
     private func updatePrivacyShield() {
         privacyShieldController.update(
-            mode: privacyShieldMode,
-            onUnlock: requestParentAccess,
-            onExit: closeParentDashboard
+            mode: privacyShieldMode
         )
     }
 
@@ -304,8 +192,7 @@ struct AppRootView: View {
 
 private enum AppDestination: Hashable {
     case title
-    case adventures
-    case parent
+    case home
 }
 
 #Preview {

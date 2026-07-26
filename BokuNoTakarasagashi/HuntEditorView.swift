@@ -141,26 +141,6 @@ struct HuntEditorView: View {
                 }
 
                 Section {
-                    SecureField(
-                        hunt == nil ? "4桁の数字" : "変更するときだけ入力",
-                        text: $draft.parentPIN
-                    )
-                    .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)
-                    .onChange(of: draft.parentPIN) { _, newValue in
-                        draft.parentPIN = ParentPIN.digitsOnly(newValue)
-                    }
-                } header: {
-                    Text("おうちの人用PIN")
-                } footer: {
-                    if hunt == nil {
-                        Text("プレイ中に作成・編集画面へ戻るために使います。忘れない4桁を設定してください。")
-                    } else {
-                        Text("現在のPINを変えない場合は、空欄のまま保存してください。")
-                    }
-                }
-
-                Section {
                     Label("道路・水辺・高い場所・立入禁止の場所には宝を隠さないでください。", systemImage: "exclamationmark.shield.fill")
                         .font(.footnote)
                         .foregroundStyle(TreasureTheme.coralText)
@@ -206,9 +186,6 @@ struct HuntEditorView: View {
             draft.completionMessage,
             maximumLength: TreasureContentLimits.maximumCompletionMessageLength
         )
-        let pinIsValid = hunt == nil
-            ? draft.parentPIN.count == 4
-            : draft.parentPIN.isEmpty || draft.parentPIN.count == 4
         let stagesAreValid = !draft.stages.isEmpty
             && draft.stages.count <= TreasureContentLimits.maximumStageCount
             && draft.stages.allSatisfy { stage in
@@ -243,7 +220,6 @@ struct HuntEditorView: View {
 
         return titleIsValid
             && messagesAreValid
-            && pinIsValid
             && stagesAreValid
             && photosAreValid
     }
@@ -283,8 +259,7 @@ struct HuntEditorView: View {
             destination = TreasureHunt(
                 title: draft.title.trimmed,
                 openingMessage: draft.openingMessage.trimmed,
-                completionMessage: draft.completionMessage.trimmed,
-                parentPIN: draft.parentPIN
+                completionMessage: draft.completionMessage.trimmed
             )
             modelContext.insert(destination)
         }
@@ -298,10 +273,6 @@ struct HuntEditorView: View {
         destination.revealedExtraHintStageID = nil
         destination.extraHintsUsedCount = 0
         destination.updatedAt = .now
-
-        if !draft.parentPIN.isEmpty {
-            destination.parentPINDigest = ParentPIN.digest(draft.parentPIN)
-        }
 
         let previousStages = destination.stages
         destination.stages.removeAll()
@@ -339,14 +310,12 @@ private struct HuntDraft {
     var title: String
     var openingMessage: String
     var completionMessage: String
-    var parentPIN: String
     var stages: [StageDraft]
 
     init(hunt: TreasureHunt?, template: HuntTemplate? = nil) {
         title = hunt?.title ?? ""
         openingMessage = hunt?.openingMessage ?? "ヒントをたどって、さいごの宝を見つけよう！"
         completionMessage = hunt?.completionMessage ?? "ぜんぶの宝を見つけた！おめでとう！"
-        parentPIN = ""
 
         if let hunt {
             stages = hunt.sortedStages.map { stage in

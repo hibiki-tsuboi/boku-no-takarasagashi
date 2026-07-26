@@ -23,7 +23,7 @@ struct PersistenceBootstrapView: View {
                     onReset: resetLocalData
                 )
             } else {
-                TreasureBackgroundArtwork(style: .adventureSelection)
+                TreasureBackgroundArtwork(style: .home)
                     .overlay {
                         ProgressView("冒険のデータを準備しています…")
                             .font(.headline)

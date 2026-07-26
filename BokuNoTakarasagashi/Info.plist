@@ -26,8 +26,6 @@
     <string>宝のNFCタグを読み書きするためにNFCを使います。</string>
     <key>NSCameraUsageDescription</key>
     <string>宝のQRコード読み取りやヒント・記念写真の撮影にカメラを使います。</string>
-    <key>NSFaceIDUsageDescription</key>
-    <string>おうちの人専用画面を保護するためにFace IDを使います。</string>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>

@@ -18,7 +18,7 @@ struct PlaySessionView: View {
 
     @State private var phase: PlayPhase
     @State private var safetyIsConfirmed = false
-    @State private var isShowingParentGate = false
+    @State private var isShowingReturnConfirmation = false
     @State private var isShowingQRCodeScanner = false
     @State private var isShowingDiscovery = false
     @State private var isShowingExtraHintConfirmation = false
@@ -32,32 +32,19 @@ struct PlaySessionView: View {
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
-    private let phaseAfterParentAuthorization: PlayPhase
-
     init(
         hunt: TreasureHunt,
-        startsInPreparation: Bool = false,
-        parentIsAuthorized: Bool = false
+        startsInPreparation: Bool = false
     ) {
         self.hunt = hunt
-
-        let authorizedPhase: PlayPhase
-        if startsInPreparation {
-            authorizedPhase = .preparation
-        } else if hunt.playState == .inProgress {
-            authorizedPhase = .handoff
-        } else {
-            authorizedPhase = .preparation
-        }
-        phaseAfterParentAuthorization = authorizedPhase
 
         let initialPhase: PlayPhase
         if hunt.isChildModeLocked {
             initialPhase = hunt.playState == .completed ? .completed : .playing
-        } else if parentIsAuthorized {
-            initialPhase = authorizedPhase
+        } else if hunt.playState == .inProgress && !startsInPreparation {
+            initialPhase = .handoff
         } else {
-            initialPhase = .parentAuthorization
+            initialPhase = .preparation
         }
         _phase = State(initialValue: initialPhase)
     }
@@ -66,13 +53,6 @@ struct PlaySessionView: View {
         ZStack {
             TreasureBackground(style: backgroundStyle) {
                 switch phase {
-                case .parentAuthorization:
-                    ParentPINGateView(
-                        expectedDigest: hunt.parentPINDigest,
-                        onCancel: { dismiss() },
-                        onUnlock: authorizeParent
-                    )
-
                 case .preparation:
                     HuntPreparationView(
                         hunt: hunt,
@@ -110,7 +90,9 @@ struct PlaySessionView: View {
                     CompletionView(
                         hunt: hunt,
                         record: completedRecord,
-                        onReturnToParent: { isShowingParentGate = true }
+                        onReturnToMenu: {
+                            isShowingReturnConfirmation = true
+                        }
                     )
                 }
             }
@@ -129,11 +111,12 @@ struct PlaySessionView: View {
         }
         .tint(TreasureTheme.teal)
         .interactiveDismissDisabled(hunt.isChildModeLocked)
-        .sheet(isPresented: $isShowingParentGate) {
-            ParentPINGateView(
-                expectedDigest: hunt.parentPINDigest,
-                onCancel: { isShowingParentGate = false },
-                onUnlock: returnToParent
+        .sheet(isPresented: $isShowingReturnConfirmation) {
+            ReturnToMenuConfirmationView(
+                onCancel: {
+                    isShowingReturnConfirmation = false
+                },
+                onConfirm: returnToMenu
             )
         }
         .fullScreenCover(isPresented: $isShowingQRCodeScanner) {
@@ -193,8 +176,6 @@ struct PlaySessionView: View {
 
     private var backgroundStyle: TreasureBackgroundStyle {
         switch phase {
-        case .parentAuthorization:
-            .security
         case .preparation:
             .preparation
         case .safety, .handoff:
@@ -212,9 +193,12 @@ struct PlaySessionView: View {
             VStack(spacing: 0) {
                 HStack {
                     Button {
-                        isShowingParentGate = true
+                        isShowingReturnConfirmation = true
                     } label: {
-                        Label("おうちの人", systemImage: "lock.fill")
+                        Label(
+                            "おうちの人にわたす",
+                            systemImage: "person.crop.circle"
+                        )
                             .font(.caption.weight(.semibold))
                     }
                     .buttonStyle(.bordered)
@@ -256,8 +240,15 @@ struct PlaySessionView: View {
             } description: {
                 Text("おうちの人にiPhoneをわたしてください。")
             } actions: {
-                Button("おうちの人", action: { isShowingParentGate = true })
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    isShowingReturnConfirmation = true
+                } label: {
+                    Label(
+                        "おうちの人にわたす",
+                        systemImage: "person.crop.circle"
+                    )
+                }
+                .buttonStyle(.borderedProminent)
             }
             .treasureCompactCard()
             .padding(20)
@@ -417,9 +408,12 @@ struct PlaySessionView: View {
                         .foregroundStyle(TreasureTheme.secondaryText)
 
                     Button {
-                        isShowingParentGate = true
+                        isShowingReturnConfirmation = true
                     } label: {
-                        Label("おうちの人にわたす", systemImage: "lock.fill")
+                        Label(
+                            "おうちの人にわたす",
+                            systemImage: "person.crop.circle"
+                        )
                     }
                     .buttonStyle(.bordered)
                 }
@@ -548,9 +542,12 @@ struct PlaySessionView: View {
                 .foregroundStyle(TreasureTheme.secondaryText)
 
             Button {
-                isShowingParentGate = true
+                isShowingReturnConfirmation = true
             } label: {
-                Label("おうちの人にわたす", systemImage: "lock.fill")
+                Label(
+                    "おうちの人にわたす",
+                    systemImage: "person.crop.circle"
+                )
             }
             .buttonStyle(.bordered)
         }
@@ -633,13 +630,13 @@ struct PlaySessionView: View {
         }
     }
 
-    private func returnToParent() {
-        hunt.unlockChildMode()
+    private func returnToMenu() {
+        hunt.endPlaySession()
         guard saveProgress() else {
-            isShowingParentGate = false
+            isShowingReturnConfirmation = false
             return
         }
-        isShowingParentGate = false
+        isShowingReturnConfirmation = false
         dismiss()
     }
 
@@ -670,12 +667,6 @@ struct PlaySessionView: View {
         }
     }
 
-    private func authorizeParent() {
-        withAnimation(reduceMotion ? nil : .easeInOut) {
-            phase = phaseAfterParentAuthorization
-        }
-    }
-
     @discardableResult
     private func saveProgress() -> Bool {
         do {
@@ -696,12 +687,76 @@ struct PlaySessionView: View {
 }
 
 private enum PlayPhase {
-    case parentAuthorization
     case preparation
     case safety
     case handoff
     case playing
     case completed
+}
+
+private struct ReturnToMenuConfirmationView: View {
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            TreasureBackground(style: .security) {
+                VStack(spacing: 22) {
+                    Spacer()
+
+                    ZStack {
+                        Circle()
+                            .fill(TreasureTheme.teal.opacity(0.14))
+
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 42))
+                            .foregroundStyle(TreasureTheme.tealText)
+                    }
+                    .frame(width: 88, height: 88)
+                    .accessibilityHidden(true)
+
+                    VStack(spacing: 9) {
+                        Text("おうちの人にわたした？")
+                            .font(.title2.bold())
+                            .foregroundStyle(TreasureTheme.ink)
+
+                        Text(
+                            "この先は宝探しを作ったり編集したりする画面です。"
+                                + "iPhoneをおうちの人にわたしてから進んでください。"
+                        )
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(TreasureTheme.secondaryText)
+                    }
+                    .treasureCard()
+
+                    Button(action: onConfirm) {
+                        Label(
+                            "わたしました",
+                            systemImage: "checkmark.circle.fill"
+                        )
+                    }
+                    .buttonStyle(TreasurePrimaryButtonStyle())
+
+                    Button("まだ遊ぶ", action: onCancel)
+                        .buttonStyle(.bordered)
+                        .tint(TreasureTheme.ink)
+
+                    Spacer()
+                }
+                .frame(maxWidth: 420)
+                .padding(24)
+                .frame(maxWidth: .infinity)
+            }
+            .navigationTitle("メニューへ戻る")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル", action: onCancel)
+                }
+            }
+        }
+        .tint(TreasureTheme.teal)
+    }
 }
 
 private struct SafetyCheckView: View {
@@ -1019,7 +1074,7 @@ struct DiscoveryOverlay: View {
 private struct CompletionView: View {
     let hunt: TreasureHunt
     let record: AdventureRecord?
-    let onReturnToParent: () -> Void
+    let onReturnToMenu: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isCelebrating = false
@@ -1101,9 +1156,12 @@ private struct CompletionView: View {
                 }
 
                 Button {
-                    onReturnToParent()
+                    onReturnToMenu()
                 } label: {
-                    Label("おうちの人にわたす", systemImage: "lock.fill")
+                    Label(
+                        "おうちの人にわたす",
+                        systemImage: "person.crop.circle"
+                    )
                 }
                 .buttonStyle(TreasurePrimaryButtonStyle())
             }

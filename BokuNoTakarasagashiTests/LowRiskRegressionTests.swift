@@ -139,8 +139,7 @@ final class LowRiskRegressionTests: XCTestCase {
                 count: TreasureContentLimits.maximumHuntTitleLength
             ),
             openingMessage: "開始",
-            completionMessage: "完了",
-            parentPIN: "1234"
+            completionMessage: "完了"
         )
         let stage = TreasureStage(
             orderIndex: 0,

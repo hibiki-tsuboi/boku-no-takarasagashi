@@ -37,7 +37,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            TreasureBackground(style: .parent) {
+            TreasureBackground(style: .home) {
                 ScrollView {
                     VStack(spacing: 28) {
                         hero
@@ -118,13 +118,13 @@ struct ContentView: View {
             AudioSettingsView()
         }
         .sheet(item: $editingHunt) { hunt in
-            ProtectedHuntEditorView(hunt: hunt)
+            HuntEditorView(hunt: hunt)
         }
         .sheet(
             item: $huntActionRequest,
             onDismiss: startPreparationAfterPreview
         ) { request in
-            ProtectedHuntActionView(
+            HuntActionView(
                 request: request,
                 onPrepare: {
                     huntToPrepareAfterPreview = request.hunt
@@ -141,8 +141,7 @@ struct ContentView: View {
         ) { hunt in
             PlaySessionView(
                 hunt: hunt,
-                startsInPreparation: startsPlayingInPreparation,
-                parentIsAuthorized: startsPlayingInPreparation
+                startsInPreparation: startsPlayingInPreparation
             )
         }
         .fileImporter(
@@ -493,7 +492,7 @@ private struct HuntCard: View {
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.circle)
                 .tint(TreasureTheme.ink)
-                .accessibilityLabel("\(hunt.title)の保護者メニュー")
+                .accessibilityLabel("\(hunt.title)の管理メニュー")
             }
 
             if hunt.playState == .inProgress, !hunt.stages.isEmpty {

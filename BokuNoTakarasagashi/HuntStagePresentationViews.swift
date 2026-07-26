@@ -63,7 +63,7 @@ struct HuntExtraHintCard: View {
         VStack(spacing: 12) {
             Label("おたすけヒント", systemImage: "lightbulb.fill")
                 .font(.headline)
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
 
             Text(extraHint)
                 .font(.system(.title3, design: .rounded, weight: .semibold))

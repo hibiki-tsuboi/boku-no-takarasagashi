@@ -21,6 +21,10 @@ struct HintPhotoEditor: View {
     @State private var preparationRequestID: UUID?
 
     var body: some View {
+        let photoPickerTitle = imageData == nil
+            ? "写真を選ぶ"
+            : "写真を変更"
+
         VStack(alignment: .leading, spacing: 12) {
             if let imageData {
                 HintPhotoView(
@@ -46,7 +50,7 @@ struct HintPhotoEditor: View {
                     preferredItemEncoding: .compatible
                 ) {
                     Label(
-                        imageData == nil ? "写真を選ぶ" : "写真を変更",
+                        photoPickerTitle,
                         systemImage: "photo.on.rectangle"
                     )
                 }
@@ -200,7 +204,8 @@ nonisolated enum HintPhotoProcessor {
     static let maximumInputByteCount = 50 * 1_024 * 1_024
     private static let maximumPixelCount = 100_000_000
     private static let maximumDimension = 1_600
-    private static let maximumStoredByteCount = 5 * 1_024 * 1_024
+    private static let maximumStoredByteCount =
+        TreasureContentLimits.maximumStagePhotoByteCount
 
     nonisolated static func storedData(from data: Data) throws -> Data {
         guard !data.isEmpty,

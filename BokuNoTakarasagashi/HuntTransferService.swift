@@ -29,30 +29,22 @@ enum HuntTransferService {
         _ source: TreasureHunt,
         in modelContext: ModelContext
     ) throws -> TreasureHunt {
-        let copy = TreasureHunt(
-            title: "\(source.title)（コピー）",
-            openingMessage: source.openingMessage,
-            completionMessage: source.completionMessage,
-            parentPIN: "0000"
+        let copyTitle = TreasureContentValidator.duplicateTitle(
+            from: source.title
+        )
+        let package = HuntTransferPackage(
+            hunt: source,
+            title: copyTitle
+        )
+        try package.validate()
+
+        let copy = try makeHunt(
+            from: package,
+            title: copyTitle,
+            parentPIN: "0000",
+            in: modelContext
         )
         copy.parentPINDigest = source.parentPINDigest
-        modelContext.insert(copy)
-
-        for (index, sourceStage) in source.sortedStages.enumerated() {
-            let stage = TreasureStage(
-                orderIndex: index,
-                hint: sourceStage.hint,
-                extraHint: sourceStage.extraHint,
-                hintImageData: sourceStage.hintImageData,
-                discoveryMessage: sourceStage.discoveryMessage,
-                verification: sourceStage.verification,
-                passphrase: sourceStage.passphrase,
-                verificationToken: UUID().uuidString,
-                hunt: copy
-            )
-            modelContext.insert(stage)
-            copy.stages.append(stage)
-        }
         try modelContext.save()
         return copy
     }
@@ -214,9 +206,12 @@ enum HuntTransferService {
 
 extension HuntTransferPackage {
     @MainActor
-    init(hunt: TreasureHunt) {
+    init(
+        hunt: TreasureHunt,
+        title: String? = nil
+    ) {
         self.init(
-            title: hunt.title,
+            title: title ?? hunt.title,
             openingMessage: hunt.openingMessage,
             completionMessage: hunt.completionMessage,
             stages: hunt.sortedStages.map { stage in

@@ -148,7 +148,7 @@ private struct PersistenceRecoveryView: View {
                 VStack(spacing: 22) {
                     Image(systemName: "externaldrive.badge.exclamationmark")
                         .font(.system(size: 52))
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                         .accessibilityHidden(true)
 
                     VStack(spacing: 8) {
@@ -185,7 +185,7 @@ private struct PersistenceRecoveryView: View {
                     Text("初期化すると、宝探し・冒険のきろく・写真がこの端末から削除され、元に戻せません。")
                         .font(.footnote)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                 }
                 .frame(maxWidth: 520)
                 .padding(24)

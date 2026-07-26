@@ -42,7 +42,9 @@ struct NFCWriterControl: View {
                     )
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(
-                        writeSucceeded ? TreasureTheme.teal : TreasureTheme.coral
+                        writeSucceeded
+                            ? TreasureTheme.teal
+                            : TreasureTheme.coralText
                     )
                 }
             } else {
@@ -111,7 +113,7 @@ struct NFCReaderControl: View {
                 Text(errorMessage)
                     .font(.caption.weight(.semibold))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
             } else if NFCSessionController.isAvailable {
                 Text(instruction)
                     .font(.caption)
@@ -223,8 +225,10 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
         _ session: NFCNDEFReaderSession,
         didDetect tags: [NFCNDEFTag]
     ) {
+        let tagsBox = UncheckedSendableBox(tags)
+        let sessionBox = UncheckedSendableBox(session)
         MainActor.assumeIsolated {
-            handleDetectedTags(tags, in: session)
+            handleDetectedTags(tagsBox.value, in: sessionBox.value)
         }
     }
 
@@ -232,8 +236,9 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
         _ session: NFCNDEFReaderSession,
         didInvalidateWithError error: any Error
     ) {
+        let errorBox = UncheckedSendableBox(error)
         MainActor.assumeIsolated {
-            handleInvalidation(error)
+            handleInvalidation(errorBox.value)
         }
     }
 
@@ -290,11 +295,12 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     ) {
         let sessionBox = UncheckedSendableBox(session)
         tag.readNDEF { [weak self, sessionBox] message, error in
+            let messageBox = message.map(UncheckedSendableBox.init)
             MainActor.assumeIsolated {
                 guard let self else { return }
 
                 let activeSession = sessionBox.value
-                guard error == nil, let message else {
+                guard error == nil, let message = messageBox?.value else {
                     activeSession.alertMessage = "このタグを読み取れませんでした。別の向きでもう一度ためしてください。"
                     activeSession.restartPolling()
                     return
@@ -445,7 +451,7 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     }
 }
 
-private final class UncheckedSendableBox<Value>: @unchecked Sendable {
+private nonisolated final class UncheckedSendableBox<Value>: @unchecked Sendable {
     let value: Value
 
     init(_ value: Value) {

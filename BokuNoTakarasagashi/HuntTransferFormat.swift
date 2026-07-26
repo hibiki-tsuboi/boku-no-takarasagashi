@@ -18,7 +18,7 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
     static let formatIdentifier = "bokunotakarasagashi-hunt"
     static let currentVersion = 1
     static let maximumFileSize = 40 * 1_024 * 1_024
-    static let maximumStageCount = 10
+    static let maximumStageCount = TreasureContentLimits.maximumStageCount
 
     let format: String
     let version: Int
@@ -73,48 +73,68 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
         guard version == Self.currentVersion else {
             throw HuntTransferError.unsupportedVersion
         }
-        guard Self.isValid(title, maximumLength: 100),
-              openingMessage.count <= 1_000,
-              completionMessage.count <= 1_000,
+        guard TreasureContentValidator.isValidRequiredText(
+                  title,
+                  maximumLength: TreasureContentLimits.maximumHuntTitleLength
+              ),
+              TreasureContentValidator.isWithinLimit(
+                  openingMessage,
+                  maximumLength: TreasureContentLimits.maximumOpeningMessageLength
+              ),
+              TreasureContentValidator.isWithinLimit(
+                  completionMessage,
+                  maximumLength: TreasureContentLimits.maximumCompletionMessageLength
+              ),
               (1...Self.maximumStageCount).contains(stages.count) else {
             throw HuntTransferError.invalidContent
         }
 
         var totalPhotoSize = 0
         for stage in stages {
-            guard Self.isValid(stage.hint, maximumLength: 1_000),
-                  stage.extraHint?.count ?? 0 <= 1_000,
-                  stage.discoveryMessage.count
-                    <= TreasureContentLimits.maximumDiscoveryMessageLength,
-                  stage.verificationRawValue.count <= 40,
-                  stage.passphrase.count <= 200 else {
+            guard TreasureContentValidator.isValidRequiredText(
+                      stage.hint,
+                      maximumLength: TreasureContentLimits.maximumHintLength
+                  ),
+                  TreasureContentValidator.isWithinLimit(
+                      stage.extraHint ?? "",
+                      maximumLength: TreasureContentLimits.maximumExtraHintLength
+                  ),
+                  TreasureContentValidator.isWithinLimit(
+                      stage.discoveryMessage,
+                      maximumLength: TreasureContentLimits.maximumDiscoveryMessageLength
+                  ),
+                  TreasureContentValidator.isWithinLimit(
+                      stage.verificationRawValue,
+                      maximumLength: TreasureContentLimits.maximumVerificationIdentifierLength
+                  ),
+                  TreasureContentValidator.isWithinLimit(
+                      stage.passphrase,
+                      maximumLength: TreasureContentLimits.maximumPassphraseLength
+                  ) else {
                 throw HuntTransferError.invalidContent
             }
 
             if stage.verificationRawValue == "passphrase",
-               stage.passphrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+               !TreasureContentValidator.isValidRequiredText(
+                   stage.passphrase,
+                   maximumLength: TreasureContentLimits.maximumPassphraseLength
+               ) {
                 throw HuntTransferError.invalidContent
             }
 
             if let photoData = stage.hintImageData {
-                guard photoData.count <= 5 * 1_024 * 1_024 else {
+                guard photoData.count
+                    <= TreasureContentLimits.maximumStagePhotoByteCount else {
                     throw HuntTransferError.invalidContent
                 }
                 totalPhotoSize += photoData.count
             }
         }
 
-        guard totalPhotoSize <= 20 * 1_024 * 1_024 else {
+        guard totalPhotoSize
+            <= TreasureContentLimits.maximumTotalPhotoByteCount else {
             throw HuntTransferError.invalidContent
         }
-    }
-
-    nonisolated private static func isValid(
-        _ value: String,
-        maximumLength: Int
-    ) -> Bool {
-        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && value.count <= maximumLength
     }
 }
 

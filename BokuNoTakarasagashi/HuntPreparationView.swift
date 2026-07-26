@@ -54,7 +54,7 @@ struct HuntPreparationView: View {
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .treasureCard()
                     }
@@ -96,12 +96,12 @@ struct HuntPreparationView: View {
                             Text("使えない発見方法を、この端末で利用できる方法へ変更してください")
                                 .font(.caption.weight(.semibold))
                                 .multilineTextAlignment(.center)
-                                .foregroundStyle(TreasureTheme.coral)
+                                .foregroundStyle(TreasureTheme.coralText)
                         } else if !allVerificationToolsArePrepared {
                             Text("QRコードの表示・共有とNFCタグへの書き込みを完了してください")
                                 .font(.caption.weight(.semibold))
                                 .multilineTextAlignment(.center)
-                                .foregroundStyle(TreasureTheme.coral)
+                                .foregroundStyle(TreasureTheme.coralText)
                         } else if !allTreasuresAreHidden {
                             Text("すべての宝を隠したら次へ進めます")
                                 .font(.caption.weight(.semibold))
@@ -144,7 +144,7 @@ struct HuntPreparationView: View {
         VStack(spacing: 8) {
             Image(systemName: "shippingbox.fill")
                 .font(.system(size: 38))
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
                 .accessibilityHidden(true)
 
             Text("順番に宝を準備しよう")
@@ -276,7 +276,7 @@ private struct PreparationStageCard: View {
                 if let extraHint = stage.availableExtraHint {
                     Text("おたすけヒント")
                         .font(.caption.bold())
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                         .padding(.top, 5)
 
                     Text(extraHint)
@@ -328,7 +328,7 @@ private struct PreparationStageCard: View {
 
                 Text(stage.passphrase)
                     .font(.body.monospaced().weight(.semibold))
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(TreasureTheme.coral.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
@@ -362,7 +362,7 @@ private struct PreparationStageCard: View {
                     icon: "exclamationmark.triangle.fill",
                     text: "この端末ではQRコードを読み取れません。発見方法を変更してください。"
                 )
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
             }
 
         case .nfc:
@@ -398,7 +398,7 @@ private struct PreparationStageCard: View {
                     icon: "exclamationmark.triangle.fill",
                     text: "この端末ではNFCを利用できません。発見方法を変更してください。"
                 )
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
             }
         }
     }

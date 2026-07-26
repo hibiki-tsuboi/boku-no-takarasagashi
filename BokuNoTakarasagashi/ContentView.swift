@@ -220,7 +220,7 @@ struct ContentView: View {
         VStack(spacing: 18) {
             Image(systemName: "sparkles")
                 .font(.system(size: 32))
-                .foregroundStyle(TreasureTheme.gold)
+                .foregroundStyle(TreasureTheme.goldText)
                 .accessibilityHidden(true)
 
             VStack(spacing: 7) {
@@ -417,11 +417,11 @@ private struct HuntCard: View {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 15)
-                        .fill(statusColor.opacity(0.15))
+                        .fill(statusAccentColor.opacity(0.15))
 
                     Image(systemName: statusIcon)
                         .font(.title2)
-                        .foregroundStyle(statusColor)
+                        .foregroundStyle(statusTextColor)
                 }
                 .frame(width: 50, height: 50)
                 .accessibilityHidden(true)
@@ -434,7 +434,7 @@ private struct HuntCard: View {
 
                     HStack(spacing: 7) {
                         Text(statusTitle)
-                            .foregroundStyle(statusColor)
+                            .foregroundStyle(statusTextColor)
 
                         Text("・")
 
@@ -531,7 +531,7 @@ private struct HuntCard: View {
         }
     }
 
-    private var statusColor: Color {
+    private var statusAccentColor: Color {
         switch hunt.playState {
         case .ready:
             TreasureTheme.teal
@@ -539,6 +539,17 @@ private struct HuntCard: View {
             TreasureTheme.coral
         case .completed:
             TreasureTheme.gold
+        }
+    }
+
+    private var statusTextColor: Color {
+        switch hunt.playState {
+        case .ready:
+            TreasureTheme.teal
+        case .inProgress:
+            TreasureTheme.coralText
+        case .completed:
+            TreasureTheme.goldText
         }
     }
 

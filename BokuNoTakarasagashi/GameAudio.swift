@@ -7,12 +7,28 @@ import AVFoundation
 import Combine
 import SwiftUI
 
+nonisolated enum HintSpeechRequestAction: Equatable, Sendable {
+    case stop
+    case speak
+
+    static func resolve(
+        isSpeaking: Bool,
+        spokenText: String,
+        requestedText: String
+    ) -> HintSpeechRequestAction {
+        isSpeaking && spokenText == requestedText
+            ? .stop
+            : .speak
+    }
+}
+
 @MainActor
 final class HintSpeechController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     @Published private(set) var isSpeaking = false
     @Published private(set) var spokenText = ""
 
     private let synthesizer = AVSpeechSynthesizer()
+    private var currentUtteranceID: ObjectIdentifier?
 
     override init() {
         super.init()
@@ -20,22 +36,40 @@ final class HintSpeechController: NSObject, ObservableObject, AVSpeechSynthesize
     }
 
     func toggle(text: String) {
-        if isSpeaking {
+        switch HintSpeechRequestAction.resolve(
+            isSpeaking: isSpeaking,
+            spokenText: spokenText,
+            requestedText: text
+        ) {
+        case .stop:
             stop()
-            return
+        case .speak:
+            speak(text)
+        }
+    }
+
+    private func speak(_ text: String) {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
         }
 
-        spokenText = text
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
         utterance.rate = 0.47
         utterance.pitchMultiplier = 1.05
-        synthesizer.speak(utterance)
+        currentUtteranceID = ObjectIdentifier(utterance)
+        spokenText = text
         isSpeaking = true
+        synthesizer.speak(utterance)
     }
 
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
+        clearSpeechState()
+    }
+
+    private func clearSpeechState() {
+        currentUtteranceID = nil
         isSpeaking = false
         spokenText = ""
     }
@@ -44,9 +78,10 @@ final class HintSpeechController: NSObject, ObservableObject, AVSpeechSynthesize
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance
     ) {
+        let utteranceID = ObjectIdentifier(utterance)
         Task { @MainActor [weak self] in
-            self?.isSpeaking = false
-            self?.spokenText = ""
+            guard self?.currentUtteranceID == utteranceID else { return }
+            self?.clearSpeechState()
         }
     }
 
@@ -54,9 +89,10 @@ final class HintSpeechController: NSObject, ObservableObject, AVSpeechSynthesize
         _ synthesizer: AVSpeechSynthesizer,
         didCancel utterance: AVSpeechUtterance
     ) {
+        let utteranceID = ObjectIdentifier(utterance)
         Task { @MainActor [weak self] in
-            self?.isSpeaking = false
-            self?.spokenText = ""
+            guard self?.currentUtteranceID == utteranceID else { return }
+            self?.clearSpeechState()
         }
     }
 }

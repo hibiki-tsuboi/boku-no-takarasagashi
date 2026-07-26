@@ -244,7 +244,7 @@ struct HuntPreviewView: View {
                     if let answerError {
                         Text(answerError)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(TreasureTheme.coral)
+                            .foregroundStyle(TreasureTheme.coralText)
                     }
                 }
 
@@ -385,7 +385,7 @@ struct HuntPreviewView: View {
                         systemImage: "gift.fill"
                     )
                     .font(.subheadline.bold())
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
                 }
                 .frame(maxWidth: .infinity)
                 .treasureCard()

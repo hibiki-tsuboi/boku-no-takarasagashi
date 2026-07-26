@@ -49,7 +49,54 @@ enum HuntPlayState: String {
 }
 
 nonisolated enum TreasureContentLimits {
+    static let maximumHuntTitleLength = 100
+    static let maximumOpeningMessageLength = 1_000
+    static let maximumCompletionMessageLength = 1_000
+    static let maximumStageCount = 10
+    static let maximumHintLength = 1_000
+    static let maximumExtraHintLength = 1_000
     static let maximumDiscoveryMessageLength = 1_000
+    static let maximumPassphraseLength = 200
+    static let maximumVerificationIdentifierLength = 40
+    static let maximumStagePhotoByteCount = 5 * 1_024 * 1_024
+    static let maximumTotalPhotoByteCount = 20 * 1_024 * 1_024
+}
+
+nonisolated enum TreasureContentValidator {
+    static func isValidRequiredText(
+        _ value: String,
+        maximumLength: Int
+    ) -> Bool {
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && value.count <= maximumLength
+    }
+
+    static func isWithinLimit(
+        _ value: String,
+        maximumLength: Int
+    ) -> Bool {
+        value.count <= maximumLength
+    }
+
+    static func limited(
+        _ value: String,
+        maximumLength: Int
+    ) -> String {
+        guard value.count > maximumLength else { return value }
+        return String(value.prefix(maximumLength))
+    }
+
+    static func duplicateTitle(from sourceTitle: String) -> String {
+        let suffix = "（コピー）"
+        let trimmedTitle = sourceTitle
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseTitle = trimmedTitle.isEmpty ? "宝探し" : trimmedTitle
+        let baseLimit = max(
+            TreasureContentLimits.maximumHuntTitleLength - suffix.count,
+            0
+        )
+        return String(baseTitle.prefix(baseLimit)) + suffix
+    }
 }
 
 @Model
@@ -257,7 +304,7 @@ final class AdventureRecord {
     }
 }
 
-enum TreasurePayload {
+nonisolated enum TreasurePayload {
     private static let prefix = "bokunotakarasagashi:treasure:"
 
     static func make(token: String) -> String {
@@ -270,7 +317,7 @@ enum TreasurePayload {
     }
 }
 
-enum ParentPIN {
+nonisolated enum ParentPIN {
     static func digest(_ pin: String) -> String {
         SHA256.hash(data: Data(pin.utf8))
             .map { String(format: "%02x", $0) }
@@ -287,7 +334,7 @@ enum ParentPIN {
 }
 
 extension String {
-    var normalizedTreasureAnswer: String {
+    nonisolated var normalizedTreasureAnswer: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
             .folding(
                 options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],

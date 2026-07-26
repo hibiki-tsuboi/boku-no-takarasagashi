@@ -244,7 +244,7 @@ struct AdventureMemoryDetailView: View {
                             "宝 \(record.treasureCount)こ",
                             systemImage: "gift.fill"
                         )
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
 
                         Label(
                             "おたすけ \(record.extraHintsUsedCount)かい",
@@ -368,7 +368,7 @@ struct AdventureMemoryThumbnail: View {
                     .fill(TreasureTheme.gold.opacity(0.2))
 
                 Image(systemName: "trophy.fill")
-                    .foregroundStyle(TreasureTheme.gold)
+                    .foregroundStyle(TreasureTheme.goldText)
             }
             .frame(width: size, height: size)
             .accessibilityHidden(true)

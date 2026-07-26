@@ -9,8 +9,8 @@ import UIKit
 import XCTest
 @testable import BokuNoTakarasagashi
 
-@MainActor
 final class MediumRiskRegressionTests: XCTestCase {
+    @MainActor
     func testParentPINNormalizesAndMatches() {
         let digest = ParentPIN.digest("1234")
 
@@ -19,6 +19,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertEqual(ParentPIN.digitsOnly("1a２3-45"), "1２34")
     }
 
+    @MainActor
     func testPreparationRequiresQRDisplayAndNFCWrite() {
         XCTAssertFalse(
             TreasurePreparationRequirement.isToolPrepared(
@@ -58,6 +59,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testTransferRejectsEleventhStageBeforeDecodingPackage() throws {
         let stage = """
         {
@@ -91,6 +93,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         }
     }
 
+    @MainActor
     func testTransferAllowsStagesTextInsideTitle() throws {
         let package = HuntTransferPackage(
             title: "文字列の中の \"stages\"",
@@ -115,6 +118,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertEqual(decoded, package)
     }
 
+    @MainActor
     func testDeletingHuntCascadesToStages() throws {
         let schema = Schema([
             TreasureHunt.self,
@@ -161,6 +165,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testStoreResetRemovesOnlyKnownStoreFiles() throws {
         let directory = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
@@ -200,6 +205,7 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: unrelatedURL.path))
     }
 
+    @MainActor
     func testPhotoProcessorDownsamplesBeforeStorage() throws {
         let size = CGSize(width: 2_000, height: 1_000)
         let sourceImage = UIGraphicsImageRenderer(size: size).image { context in
@@ -224,6 +230,9 @@ final class MediumRiskRegressionTests: XCTestCase {
         ).intValue
 
         XCTAssertLessThanOrEqual(max(width, height), 1_600)
-        XCTAssertLessThanOrEqual(storedData.count, 5 * 1_024 * 1_024)
+        XCTAssertLessThanOrEqual(
+            storedData.count,
+            TreasureContentLimits.maximumStagePhotoByteCount
+        )
     }
 }

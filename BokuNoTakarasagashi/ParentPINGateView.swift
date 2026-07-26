@@ -55,7 +55,7 @@ struct ParentPINGateView: View {
                                     Text(errorMessage)
                                         .font(.footnote.weight(.semibold))
                                         .multilineTextAlignment(.center)
-                                        .foregroundStyle(TreasureTheme.coral)
+                                        .foregroundStyle(TreasureTheme.coralText)
                                 }
                             }
                             .frame(maxWidth: 280)

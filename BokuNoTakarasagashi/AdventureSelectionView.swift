@@ -80,7 +80,7 @@ struct AdventureSelectionView: View {
         VStack(spacing: 18) {
             Image(systemName: "map")
                 .font(.system(size: 38))
-                .foregroundStyle(TreasureTheme.gold)
+                .foregroundStyle(TreasureTheme.goldText)
                 .accessibilityHidden(true)
 
             VStack(spacing: 8) {
@@ -126,11 +126,11 @@ private struct AdventureCard: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(statusColor.opacity(0.16))
+                        .fill(statusAccentColor.opacity(0.16))
 
                     Image(systemName: statusIcon)
                         .font(.title2)
-                        .foregroundStyle(statusColor)
+                        .foregroundStyle(statusTextColor)
                 }
                 .frame(width: 54, height: 54)
                 .accessibilityHidden(true)
@@ -143,7 +143,7 @@ private struct AdventureCard: View {
 
                     Text("\(statusTitle) ・ 宝 \(hunt.stages.count)こ")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(statusColor)
+                        .foregroundStyle(statusTextColor)
                 }
 
                 Spacer()
@@ -208,7 +208,7 @@ private struct AdventureCard: View {
         }
     }
 
-    private var statusColor: Color {
+    private var statusAccentColor: Color {
         switch hunt.playState {
         case .ready:
             TreasureTheme.teal
@@ -216,6 +216,17 @@ private struct AdventureCard: View {
             TreasureTheme.coral
         case .completed:
             TreasureTheme.gold
+        }
+    }
+
+    private var statusTextColor: Color {
+        switch hunt.playState {
+        case .ready:
+            TreasureTheme.teal
+        case .inProgress:
+            TreasureTheme.coralText
+        case .completed:
+            TreasureTheme.goldText
         }
     }
 

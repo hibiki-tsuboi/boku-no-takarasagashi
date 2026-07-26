@@ -129,7 +129,7 @@ struct ProtectedHuntActionView: View {
             } else if let operationError {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 48))
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
                     .accessibilityHidden(true)
 
                 Text(operationError)
@@ -251,7 +251,7 @@ private struct HuntShareContent: View {
                     Text(preparationError)
                         .font(.footnote)
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
 
                     Button("もう一度ためす", action: prepareShareFile)
                         .buttonStyle(.bordered)
@@ -264,7 +264,7 @@ private struct HuntShareContent: View {
                     systemImage: "exclamationmark.shield.fill"
                 )
                 .font(.footnote)
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
             }
             .padding(24)
         }
@@ -367,7 +367,7 @@ struct HuntImportView: View {
                             systemImage: "qrcode"
                         )
                         .font(.footnote)
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                     } header: {
                         Text("QR・NFCについて")
                     }
@@ -380,7 +380,7 @@ struct HuntImportView: View {
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.footnote)
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                     } header: {
                         Text("利用できない発見方法")
                     }
@@ -392,7 +392,7 @@ struct HuntImportView: View {
                         systemImage: "exclamationmark.shield.fill"
                     )
                     .font(.footnote)
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
                 } header: {
                     Text("安全")
                 }

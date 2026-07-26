@@ -3,14 +3,68 @@
 //  BokuNoTakarasagashi
 //
 
+import Foundation
 import SwiftUI
 
+nonisolated struct TreasureColorComponents: Sendable {
+    let red: Double
+    let green: Double
+    let blue: Double
+
+    nonisolated var color: Color {
+        Color(red: red, green: green, blue: blue)
+    }
+
+    nonisolated func contrastRatio(
+        with background: TreasureColorComponents
+    ) -> Double {
+        let brighter = max(relativeLuminance, background.relativeLuminance)
+        let darker = min(relativeLuminance, background.relativeLuminance)
+        return (brighter + 0.05) / (darker + 0.05)
+    }
+
+    nonisolated private var relativeLuminance: Double {
+        0.2126 * linearized(red)
+            + 0.7152 * linearized(green)
+            + 0.0722 * linearized(blue)
+    }
+
+    nonisolated private func linearized(_ component: Double) -> Double {
+        component <= 0.04045
+            ? component / 12.92
+            : pow((component + 0.055) / 1.055, 2.4)
+    }
+}
+
 enum TreasureTheme {
+    static let whiteComponents = TreasureColorComponents(
+        red: 1,
+        green: 1,
+        blue: 1
+    )
+    static let creamComponents = TreasureColorComponents(
+        red: 1.00,
+        green: 0.97,
+        blue: 0.88
+    )
+    static let goldTextComponents = TreasureColorComponents(
+        red: 0.43,
+        green: 0.28,
+        blue: 0.03
+    )
+    static let coralTextComponents = TreasureColorComponents(
+        red: 0.68,
+        green: 0.18,
+        blue: 0.12
+    )
+
     static let ink = Color(red: 0.13, green: 0.20, blue: 0.25)
     static let teal = Color(red: 0.10, green: 0.48, blue: 0.49)
     static let gold = Color(red: 0.95, green: 0.64, blue: 0.15)
     static let coral = Color(red: 0.91, green: 0.35, blue: 0.27)
-    static let cream = Color(red: 1.00, green: 0.97, blue: 0.88)
+    static let goldText = goldTextComponents.color
+    static let coralText = coralTextComponents.color
+    static let cream = creamComponents.color
 
     static let background = LinearGradient(
         colors: [

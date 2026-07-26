@@ -25,6 +25,17 @@ struct HuntEditorView: View {
             Form {
                 Section {
                     TextField("例：おうちの大冒険", text: $draft.title)
+                        .onChange(of: draft.title) { _, newValue in
+                            draft.title = TreasureContentValidator.limited(
+                                newValue,
+                                maximumLength: TreasureContentLimits.maximumHuntTitleLength
+                            )
+                        }
+
+                    CharacterLimitStatus(
+                        count: draft.title.count,
+                        maximum: TreasureContentLimits.maximumHuntTitleLength
+                    )
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("はじまりのメッセージ")
@@ -32,6 +43,18 @@ struct HuntEditorView: View {
 
                         TextEditor(text: $draft.openingMessage)
                             .frame(minHeight: 72)
+                            .onChange(of: draft.openingMessage) { _, newValue in
+                                draft.openingMessage = TreasureContentValidator.limited(
+                                    newValue,
+                                    maximumLength: TreasureContentLimits
+                                        .maximumOpeningMessageLength
+                                )
+                            }
+
+                        CharacterLimitStatus(
+                            count: draft.openingMessage.count,
+                            maximum: TreasureContentLimits.maximumOpeningMessageLength
+                        )
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -40,6 +63,18 @@ struct HuntEditorView: View {
 
                         TextEditor(text: $draft.completionMessage)
                             .frame(minHeight: 72)
+                            .onChange(of: draft.completionMessage) { _, newValue in
+                                draft.completionMessage = TreasureContentValidator.limited(
+                                    newValue,
+                                    maximumLength: TreasureContentLimits
+                                        .maximumCompletionMessageLength
+                                )
+                            }
+
+                        CharacterLimitStatus(
+                            count: draft.completionMessage.count,
+                            maximum: TreasureContentLimits.maximumCompletionMessageLength
+                        )
                     }
                 } header: {
                     Text("宝探し")
@@ -71,7 +106,10 @@ struct HuntEditorView: View {
                     } label: {
                         Label("宝を追加", systemImage: "plus.circle.fill")
                     }
-                    .disabled(draft.stages.count >= 10)
+                    .disabled(
+                        draft.stages.count
+                            >= TreasureContentLimits.maximumStageCount
+                    )
                 } header: {
                     HStack {
                         Text("宝の順番")
@@ -83,7 +121,21 @@ struct HuntEditorView: View {
                         }
                     }
                 } footer: {
-                    Text("上から順にヒントが開きます。最後の宝がゴールです（最大10個）。")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(
+                            "上から順にヒントが開きます。最後の宝がゴールです"
+                                + "（最大\(TreasureContentLimits.maximumStageCount)個）。"
+                        )
+
+                        if totalPhotoByteCount
+                            > TreasureContentLimits.maximumTotalPhotoByteCount {
+                            Label(
+                                "写真の合計を20MB以内にしてください。",
+                                systemImage: "exclamationmark.triangle.fill"
+                            )
+                            .foregroundStyle(TreasureTheme.coralText)
+                        }
+                    }
                 }
 
                 Section {
@@ -109,7 +161,7 @@ struct HuntEditorView: View {
                 Section {
                     Label("道路・水辺・高い場所・立入禁止の場所には宝を隠さないでください。", systemImage: "exclamationmark.shield.fill")
                         .font(.footnote)
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                 } header: {
                     Text("安全")
                 }
@@ -141,22 +193,63 @@ struct HuntEditorView: View {
     }
 
     private var canSave: Bool {
-        let titleIsValid = !draft.title.trimmed.isEmpty
+        let titleIsValid = TreasureContentValidator.isValidRequiredText(
+            draft.title,
+            maximumLength: TreasureContentLimits.maximumHuntTitleLength
+        )
+        let messagesAreValid = TreasureContentValidator.isWithinLimit(
+            draft.openingMessage,
+            maximumLength: TreasureContentLimits.maximumOpeningMessageLength
+        ) && TreasureContentValidator.isWithinLimit(
+            draft.completionMessage,
+            maximumLength: TreasureContentLimits.maximumCompletionMessageLength
+        )
         let pinIsValid = hunt == nil
             ? draft.parentPIN.count == 4
             : draft.parentPIN.isEmpty || draft.parentPIN.count == 4
         let stagesAreValid = !draft.stages.isEmpty
-            && draft.stages.count <= 10
+            && draft.stages.count <= TreasureContentLimits.maximumStageCount
             && draft.stages.allSatisfy { stage in
-                !stage.hint.trimmed.isEmpty
-                    && (stage.verification != .passphrase || !stage.passphrase.trimmed.isEmpty)
+                TreasureContentValidator.isValidRequiredText(
+                    stage.hint,
+                    maximumLength: TreasureContentLimits.maximumHintLength
+                )
+                    && TreasureContentValidator.isWithinLimit(
+                        stage.extraHint,
+                        maximumLength: TreasureContentLimits.maximumExtraHintLength
+                    )
+                    && TreasureContentValidator.isWithinLimit(
+                        stage.discoveryMessage,
+                        maximumLength: TreasureContentLimits.maximumDiscoveryMessageLength
+                    )
+                    && TreasureContentValidator.isWithinLimit(
+                        stage.passphrase,
+                        maximumLength: TreasureContentLimits.maximumPassphraseLength
+                    )
+                    && (
+                        stage.verification != .passphrase
+                            || TreasureContentValidator.isValidRequiredText(
+                                stage.passphrase,
+                                maximumLength: TreasureContentLimits.maximumPassphraseLength
+                            )
+                    )
                     && (stage.verification != .qrCode || QRCodeScannerCapability.isSupported)
                     && (stage.verification != .nfc || NFCSessionController.isAvailable)
-                    && stage.discoveryMessage.count
-                        <= TreasureContentLimits.maximumDiscoveryMessageLength
             }
+        let photosAreValid = totalPhotoByteCount
+            <= TreasureContentLimits.maximumTotalPhotoByteCount
 
-        return titleIsValid && pinIsValid && stagesAreValid
+        return titleIsValid
+            && messagesAreValid
+            && pinIsValid
+            && stagesAreValid
+            && photosAreValid
+    }
+
+    private var totalPhotoByteCount: Int {
+        draft.stages.reduce(into: 0) { total, stage in
+            total += stage.hintImageData?.count ?? 0
+        }
     }
 
     private var saveErrorIsPresented: Binding<Bool> {
@@ -361,7 +454,7 @@ private struct StageRow: View {
             if stage.hintImageData != nil {
                 Image(systemName: "photo.fill")
                     .font(.caption)
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
                     .accessibilityLabel("写真ヒントあり")
             }
 
@@ -385,19 +478,43 @@ private struct StageEditorView: View {
             Section {
                 TextEditor(text: $stage.hint)
                     .frame(minHeight: 110)
+                    .onChange(of: stage.hint) { _, newValue in
+                        stage.hint = TreasureContentValidator.limited(
+                            newValue,
+                            maximumLength: TreasureContentLimits.maximumHintLength
+                        )
+                    }
             } header: {
                 Text("ヒント")
             } footer: {
-                Text("隠し場所を直接言わず、子どもが考えられる言葉にします。")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("隠し場所を直接言わず、子どもが考えられる言葉にします。")
+                    CharacterLimitStatus(
+                        count: stage.hint.count,
+                        maximum: TreasureContentLimits.maximumHintLength
+                    )
+                }
             }
 
             Section {
                 TextEditor(text: $stage.extraHint)
                     .frame(minHeight: 82)
+                    .onChange(of: stage.extraHint) { _, newValue in
+                        stage.extraHint = TreasureContentValidator.limited(
+                            newValue,
+                            maximumLength: TreasureContentLimits.maximumExtraHintLength
+                        )
+                    }
             } header: {
                 Text("おたすけヒント（任意）")
             } footer: {
-                Text("通常のヒントで難しいときだけ、さがす人が自分で開けます。空欄なら表示されません。")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("通常のヒントで難しいときだけ、さがす人が自分で開けます。空欄なら表示されません。")
+                    CharacterLimitStatus(
+                        count: stage.extraHint.count,
+                        maximum: TreasureContentLimits.maximumExtraHintLength
+                    )
+                }
             }
 
             Section {
@@ -415,7 +532,7 @@ private struct StageEditorView: View {
                             "\(stage.verification.title)（利用不可）",
                             systemImage: stage.verification.systemImage
                         )
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
                     }
 
                     Label(
@@ -423,7 +540,7 @@ private struct StageEditorView: View {
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .font(.footnote)
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
 
                     if QRCodeScannerCapability.isSupported,
                        stage.verification != .qrCode {
@@ -450,9 +567,23 @@ private struct StageEditorView: View {
                 }
 
                 if stage.verification == .passphrase {
-                    TextField("宝と一緒に置く合言葉", text: $stage.passphrase)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("宝と一緒に置く合言葉", text: $stage.passphrase)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .onChange(of: stage.passphrase) { _, newValue in
+                                stage.passphrase = TreasureContentValidator.limited(
+                                    newValue,
+                                    maximumLength: TreasureContentLimits
+                                        .maximumPassphraseLength
+                                )
+                            }
+
+                        CharacterLimitStatus(
+                            count: stage.passphrase.count,
+                            maximum: TreasureContentLimits.maximumPassphraseLength
+                        )
+                    }
                 }
 
                 if stage.verification == .qrCode && QRCodeScannerCapability.isSupported {
@@ -479,10 +610,11 @@ private struct StageEditorView: View {
                 TextEditor(text: $stage.discoveryMessage)
                     .frame(minHeight: 82)
                     .onChange(of: stage.discoveryMessage) { _, newValue in
-                        let limit = TreasureContentLimits.maximumDiscoveryMessageLength
-                        if newValue.count > limit {
-                            stage.discoveryMessage = String(newValue.prefix(limit))
-                        }
+                        stage.discoveryMessage = TreasureContentValidator.limited(
+                            newValue,
+                            maximumLength: TreasureContentLimits
+                                .maximumDiscoveryMessageLength
+                        )
                     }
             } header: {
                 Text("見つけたときのひとこと")
@@ -493,15 +625,9 @@ private struct StageEditorView: View {
                         : "このメッセージのあとに、次のヒントが開きます。"
                     )
 
-                    Text(
-                        "\(stage.discoveryMessage.count) / "
-                            + "\(TreasureContentLimits.maximumDiscoveryMessageLength)文字"
-                    )
-                    .foregroundStyle(
-                        stage.discoveryMessage.count
-                            <= TreasureContentLimits.maximumDiscoveryMessageLength
-                            ? Color.secondary
-                            : TreasureTheme.coral
+                    CharacterLimitStatus(
+                        count: stage.discoveryMessage.count,
+                        maximum: TreasureContentLimits.maximumDiscoveryMessageLength
                     )
                 }
             }
@@ -560,7 +686,24 @@ private struct StageEditorView: View {
 }
 
 private extension String {
-    var trimmed: String {
+    nonisolated var trimmed: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct CharacterLimitStatus: View {
+    let count: Int
+    let maximum: Int
+
+    var body: some View {
+        Text("\(count) / \(maximum)文字")
+            .font(.caption)
+            .foregroundStyle(
+                count <= maximum
+                    ? Color.secondary
+                    : TreasureTheme.coralText
+            )
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .accessibilityLabel("\(maximum)文字中\(count)文字")
     }
 }

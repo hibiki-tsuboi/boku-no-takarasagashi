@@ -348,7 +348,7 @@ struct PlaySessionView: View {
                     if let answerError {
                         Text(answerError)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(TreasureTheme.coral)
+                            .foregroundStyle(TreasureTheme.coralText)
                     }
                 }
 
@@ -390,7 +390,7 @@ struct PlaySessionView: View {
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .font(.subheadline.bold())
-                    .foregroundStyle(TreasureTheme.coral)
+                    .foregroundStyle(TreasureTheme.coralText)
 
                     Text("おうちの人に渡して、発見方法を変更してもらってください。")
                         .font(.caption)
@@ -520,7 +520,7 @@ struct PlaySessionView: View {
         VStack(spacing: 10) {
             Label(title, systemImage: "exclamationmark.triangle.fill")
                 .font(.subheadline.bold())
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
 
             Text("おうちの人に渡して、発見方法を変更してもらってください。")
                 .font(.caption)
@@ -760,7 +760,7 @@ private struct SafetyRow: View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.headline)
-                .foregroundStyle(TreasureTheme.coral)
+                .foregroundStyle(TreasureTheme.coralText)
                 .frame(width: 26)
                 .accessibilityHidden(true)
 
@@ -837,7 +837,7 @@ private struct HandoffView: View {
                     VStack(spacing: 9) {
                         Image(systemName: "iphone.gen3.radiowaves.left.and.right")
                             .font(.title2)
-                            .foregroundStyle(TreasureTheme.coral)
+                            .foregroundStyle(TreasureTheme.coralText)
                             .accessibilityHidden(true)
 
                         Text("iPhoneをさがす人に渡してから\n下のボタンを押してください")
@@ -1032,7 +1032,7 @@ private struct CompletionView: View {
 
                     Label("宝 \(hunt.stages.count)こ 発見", systemImage: "gift.fill")
                         .font(.subheadline.bold())
-                        .foregroundStyle(TreasureTheme.coral)
+                        .foregroundStyle(TreasureTheme.coralText)
 
                     if hunt.usedExtraHintCount > 0 {
                         Label(

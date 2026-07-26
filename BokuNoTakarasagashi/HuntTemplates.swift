@@ -162,7 +162,7 @@ struct HuntCreationFlowView: View {
                                 systemImage: "exclamationmark.shield.fill"
                             )
                             .font(.footnote)
-                            .foregroundStyle(TreasureTheme.coral)
+                            .foregroundStyle(TreasureTheme.coralText)
                             .padding(.top, 4)
                         }
                         .padding(20)

@@ -66,6 +66,30 @@ final class LowRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testContentLimitsRejectOversizedSingleGrapheme() {
+        let pathologicalValue = "a" + String(
+            repeating: "\u{0301}",
+            count: TreasureContentValidator.maximumUTF8ByteCount(
+                forCharacterLimit: TreasureContentLimits.maximumHuntTitleLength
+            )
+        )
+
+        XCTAssertEqual(pathologicalValue.count, 1)
+        XCTAssertFalse(
+            TreasureContentValidator.isWithinLimit(
+                pathologicalValue,
+                maximumLength: TreasureContentLimits.maximumHuntTitleLength
+            )
+        )
+        XCTAssertTrue(
+            TreasureContentValidator.limited(
+                pathologicalValue,
+                maximumLength: TreasureContentLimits.maximumHuntTitleLength
+            ).isEmpty
+        )
+    }
+
+    @MainActor
     func testDuplicateTitleKeepsSuffixWithinSharedLimit() throws {
         let schema = Schema([
             TreasureHunt.self,

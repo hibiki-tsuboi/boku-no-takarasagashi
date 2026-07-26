@@ -13,6 +13,7 @@ struct NFCWriterControl: View {
     @State private var sessionController: NFCSessionController?
     @State private var resultMessage: String?
     @State private var writeSucceeded = false
+    @State private var isConfirmingOverwrite = false
 
     init(
         payload: String,
@@ -24,7 +25,9 @@ struct NFCWriterControl: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button(action: beginWriting) {
+            Button {
+                beginWriting()
+            } label: {
                 Label(
                     writeSucceeded ? "別のタグにも書き込む" : "NFCタグに書き込む",
                     systemImage: "wave.3.right.circle.fill"
@@ -53,14 +56,32 @@ struct NFCWriterControl: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .confirmationDialog(
+            "このタグの既存データを上書きしますか？",
+            isPresented: $isConfirmingOverwrite,
+            titleVisibility: .visible
+        ) {
+            Button("上書きする", role: .destructive) {
+                beginWriting(allowsOverwrite: true)
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("URLや連絡先など、現在タグに入っているデータは失われます。")
+        }
     }
 
-    private func beginWriting() {
+    private func beginWriting(allowsOverwrite: Bool = false) {
         resultMessage = nil
 
         let controller = NFCSessionController(
-            operation: .write(payload: payload)
+            operation: .write(
+                payload: payload,
+                allowsOverwrite: allowsOverwrite
+            )
         ) { result in
+            defer {
+                sessionController = nil
+            }
             switch result {
             case .success:
                 writeSucceeded = true
@@ -68,10 +89,13 @@ struct NFCWriterControl: View {
                 onWriteSuccess()
             case let .failure(error):
                 guard error != .cancelled else { return }
+                if error == .containsExistingData {
+                    isConfirmingOverwrite = true
+                    return
+                }
                 writeSucceeded = false
                 resultMessage = error.errorDescription
             }
-            sessionController = nil
         }
         sessionController = controller
         controller.begin()
@@ -153,6 +177,9 @@ struct NFCReaderControl: View {
                 successMessage: successMessage
             )
         ) { result in
+            defer {
+                sessionController = nil
+            }
             switch result {
             case .success:
                 onMatch()
@@ -160,7 +187,6 @@ struct NFCReaderControl: View {
                 guard error != .cancelled else { return }
                 errorMessage = error.errorDescription
             }
-            sessionController = nil
         }
         sessionController = controller
         controller.begin()
@@ -171,7 +197,7 @@ struct NFCReaderControl: View {
 final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     enum Operation {
         case read(expectedPayload: String, successMessage: String)
-        case write(payload: String)
+        case write(payload: String, allowsOverwrite: Bool)
     }
 
     static var isAvailable: Bool {
@@ -276,9 +302,10 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                         successMessage: successMessage,
                         session: connectedSession
                     )
-                case let .write(payload):
+                case let .write(payload, allowsOverwrite):
                     self.write(
                         payload: payload,
+                        allowsOverwrite: allowsOverwrite,
                         to: connectedTag,
                         session: connectedSession
                     )
@@ -333,6 +360,7 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
 
     private func write(
         payload: String,
+        allowsOverwrite: Bool,
         to tag: NFCNDEFTag,
         session: NFCNDEFReaderSession
     ) {
@@ -391,31 +419,106 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                         return
                     }
 
-                    tagBox.value.writeNDEF(
-                        message
-                    ) { [weak self, sessionBox] error in
-                        MainActor.assumeIsolated {
-                            guard let self else { return }
-
-                            let writingSession = sessionBox.value
-                            if error == nil {
-                                writingSession.alertMessage = "NFCタグへ書き込みました！"
-                                writingSession.invalidate()
-                                self.finish(.success(()))
-                            } else {
-                                self.fail(
-                                    .writeFailed,
-                                    message: "書き込みに失敗しました。もう一度ためしてください。",
-                                    session: writingSession
-                                )
-                            }
-                        }
-                    }
+                    self.prepareWrite(
+                        message,
+                        allowsOverwrite: allowsOverwrite,
+                        to: tagBox.value,
+                        session: activeSession
+                    )
 
                 @unknown default:
                     self.fail(
                         .writeFailed,
                         message: "このNFCタグには対応していません。",
+                        session: activeSession
+                    )
+                }
+            }
+        }
+    }
+
+    private func prepareWrite(
+        _ message: NFCNDEFMessage,
+        allowsOverwrite: Bool,
+        to tag: NFCNDEFTag,
+        session: NFCNDEFReaderSession
+    ) {
+        guard !allowsOverwrite else {
+            commitWrite(message, to: tag, session: session)
+            return
+        }
+
+        let sessionBox = UncheckedSendableBox(session)
+        let tagBox = UncheckedSendableBox(tag)
+        let writeMessageBox = UncheckedSendableBox(message)
+        tag.readNDEF {
+            [weak self, sessionBox, tagBox, writeMessageBox]
+            existingMessage,
+            error in
+            let messageBox = existingMessage.map(UncheckedSendableBox.init)
+            MainActor.assumeIsolated {
+                guard let self else { return }
+
+                let activeSession = sessionBox.value
+                guard error == nil else {
+                    self.fail(
+                        .connectionFailed,
+                        message: "タグの既存データを確認できませんでした。",
+                        session: activeSession
+                    )
+                    return
+                }
+
+                if let existingMessage = messageBox?.value,
+                   self.containsForeignRecords(existingMessage) {
+                    activeSession.alertMessage =
+                        "既存データがあります。上書きする場合は、確認後にもう一度タグを近づけてください。"
+                    activeSession.invalidate()
+                    self.finish(.failure(.containsExistingData))
+                    return
+                }
+
+                self.commitWrite(
+                    writeMessageBox.value,
+                    to: tagBox.value,
+                    session: activeSession
+                )
+            }
+        }
+    }
+
+    private func containsForeignRecords(_ message: NFCNDEFMessage) -> Bool {
+        message.records.contains { record in
+            let (text, _) = record.wellKnownTypeTextPayload()
+            if let text {
+                return !TreasurePayload.isTreasurePayload(text)
+            }
+            if let url = record.wellKnownTypeURIPayload() {
+                return !TreasurePayload.isTreasurePayload(url.absoluteString)
+            }
+            return true
+        }
+    }
+
+    private func commitWrite(
+        _ message: NFCNDEFMessage,
+        to tag: NFCNDEFTag,
+        session: NFCNDEFReaderSession
+    ) {
+        let sessionBox = UncheckedSendableBox(session)
+        tag.writeNDEF(message) { [weak self, sessionBox] error in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+
+                let activeSession = sessionBox.value
+                if error == nil {
+                    activeSession.alertMessage = "NFCタグへ書き込みました！"
+                    activeSession.invalidate()
+                    self.finish(.success(()))
+                } else {
+                    self.fail(
+                        .writeFailed,
+                        message: "書き込みに失敗しました。もう一度ためしてください。",
                         session: activeSession
                     )
                 }
@@ -466,6 +569,7 @@ enum TreasureNFCError: Error, Equatable {
     case notNDEF
     case readOnly
     case capacityTooSmall
+    case containsExistingData
     case writeFailed
     case sessionFailed
 
@@ -483,6 +587,8 @@ enum TreasureNFCError: Error, Equatable {
             "読み取り専用のため書き込めません。"
         case .capacityTooSmall:
             "タグの保存容量が足りません。"
+        case .containsExistingData:
+            "このタグには既存のデータがあります。"
         case .writeFailed:
             "NFCタグへの書き込みに失敗しました。"
         case .sessionFailed:

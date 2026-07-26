@@ -10,6 +10,7 @@ struct HuntPreviewView: View {
     let onPrepare: () -> Void
 
     @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var stageIndex = 0
     @State private var revealedExtraHintStageIDs: Set<UUID> = []
@@ -50,7 +51,11 @@ struct HuntPreviewView: View {
                     isLast: currentStageIsLast,
                     onContinue: continueAfterDiscovery
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .scale(scale: 0.92))
+                )
                 .zIndex(2)
             }
         }
@@ -466,7 +471,11 @@ struct HuntPreviewView: View {
         answerError = nil
         speechController.stop()
         soundPlayer.playDiscovery()
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
+        withAnimation(
+            reduceMotion
+                ? nil
+                : .spring(response: 0.42, dampingFraction: 0.78)
+        ) {
             isShowingDiscovery = true
         }
     }
@@ -474,7 +483,7 @@ struct HuntPreviewView: View {
     private func continueAfterDiscovery() {
         let wasLast = currentStageIsLast
 
-        withAnimation(.easeInOut) {
+        withAnimation(reduceMotion ? nil : .easeInOut) {
             isShowingDiscovery = false
         }
 
@@ -491,7 +500,7 @@ struct HuntPreviewView: View {
         passphrase = ""
         answerError = nil
         isShowingQRCodeScanner = false
-        withAnimation(.easeInOut) {
+        withAnimation(reduceMotion ? nil : .easeInOut) {
             stageIndex = index
         }
     }
@@ -500,11 +509,17 @@ struct HuntPreviewView: View {
         speechController.stop()
         soundPlayer.playCompletion()
         isCelebrating = false
-        withAnimation(.easeInOut) {
+        withAnimation(reduceMotion ? nil : .easeInOut) {
             isShowingCompletion = true
         }
         withAnimation(
-            .spring(response: 0.7, dampingFraction: 0.58).delay(0.1)
+            reduceMotion
+                ? nil
+                : .spring(
+                    response: 0.7,
+                    dampingFraction: 0.58
+                )
+                .delay(0.1)
         ) {
             isCelebrating = true
         }

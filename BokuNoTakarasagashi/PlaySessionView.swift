@@ -11,6 +11,7 @@ struct PlaySessionView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
     @Query private var hunts: [TreasureHunt]
 
@@ -76,7 +77,7 @@ struct PlaySessionView: View {
                         hunt: hunt,
                         onClose: { dismiss() },
                         onContinue: {
-                            withAnimation(.easeInOut) {
+                            withAnimation(reduceMotion ? nil : .easeInOut) {
                                 phase = .safety
                             }
                         }
@@ -87,7 +88,7 @@ struct PlaySessionView: View {
                         isConfirmed: $safetyIsConfirmed,
                         onClose: { dismiss() },
                         onContinue: {
-                            withAnimation(.easeInOut) {
+                            withAnimation(reduceMotion ? nil : .easeInOut) {
                                 phase = .handoff
                             }
                         }
@@ -121,7 +122,7 @@ struct PlaySessionView: View {
                     isLast: hunt.currentStageIndex == hunt.sortedStages.count - 1,
                     onContinue: continueAfterDiscovery
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                .transition(discoveryTransition)
                 .zIndex(2)
             }
         }
@@ -262,7 +263,11 @@ struct PlaySessionView: View {
                     extraHint: extraHint,
                     speechController: speechController
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .scale(scale: 0.96))
+                )
             } else {
                 VStack(spacing: 8) {
                     Button {
@@ -359,7 +364,7 @@ struct PlaySessionView: View {
             .treasureCard()
 
         case .qrCode:
-            if QRCodeScannerCapability.isSupported {
+            if QRCodeScannerCapability.isCurrentlyAvailable {
                 VStack(spacing: 10) {
                     Button {
                         isShowingQRCodeScanner = true
@@ -484,7 +489,8 @@ struct PlaySessionView: View {
 
     private func startPlaying() {
         guard !hunt.sortedStages.contains(where: {
-            $0.verification == .qrCode && !QRCodeScannerCapability.isSupported
+            $0.verification == .qrCode
+                && !QRCodeScannerCapability.isCurrentlyAvailable
         }) else {
             sessionError = "この端末ではQRコードを読み取れません。発見方法を合言葉などへ変更してください。"
             return
@@ -511,7 +517,7 @@ struct PlaySessionView: View {
         }
         guard saveProgress() else { return }
 
-        withAnimation(.easeInOut) {
+        withAnimation(reduceMotion ? nil : .easeInOut) {
             phase = .playing
         }
     }
@@ -552,7 +558,11 @@ struct PlaySessionView: View {
         passphraseIsFocused = false
         speechController.stop()
         soundPlayer.playDiscovery()
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
+        withAnimation(
+            reduceMotion
+                ? nil
+                : .spring(response: 0.42, dampingFraction: 0.78)
+        ) {
             isShowingDiscovery = true
         }
     }
@@ -563,7 +573,11 @@ struct PlaySessionView: View {
             return
         }
 
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+        withAnimation(
+            reduceMotion
+                ? nil
+                : .spring(response: 0.38, dampingFraction: 0.82)
+        ) {
             hunt.revealExtraHint(for: stage.id)
         }
         _ = saveProgress()
@@ -593,7 +607,7 @@ struct PlaySessionView: View {
         answerError = nil
         isShowingQRCodeScanner = false
         isShowingExtraHintConfirmation = false
-        withAnimation(.easeInOut) {
+        withAnimation(reduceMotion ? nil : .easeInOut) {
             isShowingDiscovery = false
             if wasLastStage {
                 phase = .completed
@@ -639,7 +653,7 @@ struct PlaySessionView: View {
     }
 
     private func authorizeParent() {
-        withAnimation(.easeInOut) {
+        withAnimation(reduceMotion ? nil : .easeInOut) {
             phase = phaseAfterParentAuthorization
         }
     }
@@ -654,6 +668,12 @@ struct PlaySessionView: View {
             persistenceError = error.localizedDescription
             return false
         }
+    }
+
+    private var discoveryTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .opacity.combined(with: .scale(scale: 0.92))
     }
 }
 
@@ -975,6 +995,7 @@ private struct CompletionView: View {
     let record: AdventureRecord?
     let onReturnToParent: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isCelebrating = false
     @State private var isShowingMemoryEditor = false
 
@@ -1064,7 +1085,15 @@ private struct CompletionView: View {
             .padding(.bottom, 40)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.58).delay(0.1)) {
+            withAnimation(
+                reduceMotion
+                    ? nil
+                    : .spring(
+                        response: 0.7,
+                        dampingFraction: 0.58
+                    )
+                    .delay(0.1)
+            ) {
                 isCelebrating = true
             }
         }

@@ -23,8 +23,22 @@ enum QRCodeScannerCapability {
 struct QRCodePreparationView: View {
     let payload: String
     let treasureNumber: Int
+    let isPrepared: Bool
+    let onPrepared: (() -> Void)?
 
     @State private var isShowingShareSheet = false
+
+    init(
+        payload: String,
+        treasureNumber: Int,
+        isPrepared: Bool = false,
+        onPrepared: (() -> Void)? = nil
+    ) {
+        self.payload = payload
+        self.treasureNumber = treasureNumber
+        self.isPrepared = isPrepared
+        self.onPrepared = onPrepared
+    }
 
     private var qrCodeImage: UIImage? {
         QRCodeImageGenerator.makeImage(payload: payload)
@@ -61,6 +75,22 @@ struct QRCodePreparationView: View {
                             Label("画像を共有・印刷", systemImage: "square.and.arrow.up")
                         }
                         .buttonStyle(TreasurePrimaryButtonStyle())
+
+                        if let onPrepared {
+                            Button(action: onPrepared) {
+                                Label(
+                                    isPrepared
+                                        ? "QRコードを用意しました"
+                                        : "印刷・保存・別端末への準備ができた",
+                                    systemImage: isPrepared
+                                        ? "checkmark.circle.fill"
+                                        : "circle"
+                                )
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(isPrepared ? TreasureTheme.teal : TreasureTheme.ink)
+                            .disabled(isPrepared)
+                        }
                     } else {
                         ContentUnavailableView(
                             "QRコードを作れませんでした",
@@ -199,7 +229,7 @@ private struct QRDataScannerView: UIViewControllerRepresentable {
     let onError: (String) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCode: onCode)
+        Coordinator(onCode: onCode, onError: onError)
     }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
@@ -240,12 +270,27 @@ private struct QRDataScannerView: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
         private let onCode: (String) -> Bool
+        private let onError: (String) -> Void
         private var didMatch = false
         private var lastRejectedValue: String?
         private var lastRejectedAt = Date.distantPast
 
-        init(onCode: @escaping (String) -> Bool) {
+        init(
+            onCode: @escaping (String) -> Bool,
+            onError: @escaping (String) -> Void
+        ) {
             self.onCode = onCode
+            self.onError = onError
+        }
+
+        func dataScanner(
+            _ dataScanner: DataScannerViewController,
+            becameUnavailableWithError error: DataScannerViewController.ScanningUnavailable
+        ) {
+            dataScanner.stopScanning()
+            onError(
+                "カメラを利用できなくなりました。設定や利用制限を確認してください。"
+            )
         }
 
         func dataScanner(

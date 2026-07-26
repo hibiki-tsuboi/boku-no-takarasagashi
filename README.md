@@ -82,7 +82,7 @@ QRコードとNFCタグには宝ごとに異なる識別子を保存します。
 
 ## 開発と実機確認
 
-必要環境はXcode 26.6以降、iOS 26.5以降です。
+必要環境はXcode 26.6以降、iOS 26.0以降です。
 
 ```sh
 open BokuNoTakarasagashi.xcodeproj
@@ -99,13 +99,13 @@ xcodebuild \
   build
 ```
 
-ユニットテストは、`-showdestinations` で表示されたiOS 26.5シミュレータを指定して実行します。
+ユニットテストは、`-showdestinations` で表示されたiOS 26.0以降のシミュレータを指定して実行します。
 
 ```sh
 xcodebuild test \
   -project BokuNoTakarasagashi.xcodeproj \
   -scheme BokuNoTakarasagashi \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5'
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.0'
 ```
 
 実機で動かす場合は、XcodeのSigning & Capabilitiesで自分のDevelopment Teamを選択してください。QRコードにはカメラ対応端末、NFCには対応iPhoneと書き込み可能なNDEFタグが必要です。QRの初回利用時にはカメラの許可画面が、NFC利用時にはシステムの読み取り画面が表示されます。

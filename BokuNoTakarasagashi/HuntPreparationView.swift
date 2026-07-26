@@ -13,7 +13,7 @@ struct HuntPreparationView: View {
     @State private var hiddenStageIDs: Set<UUID> = []
     @State private var testedStageIDs: Set<UUID> = []
     @State private var writtenNFCStageIDs: Set<UUID> = []
-    @State private var displayedQRCodeStageIDs: Set<UUID> = []
+    @State private var preparedQRCodeStageIDs: Set<UUID> = []
     @State private var qrCodeStage: TreasureStage?
     @State private var qrCodeTestStage: TreasureStage?
 
@@ -67,9 +67,8 @@ struct HuntPreparationView: View {
                             isHidden: hiddenStageIDs.contains(stage.id),
                             isTested: testedStageIDs.contains(stage.id),
                             isNFCWritten: writtenNFCStageIDs.contains(stage.id),
-                            isQRCodeDisplayed: displayedQRCodeStageIDs.contains(stage.id),
+                            isQRCodePrepared: preparedQRCodeStageIDs.contains(stage.id),
                             onShowQRCode: {
-                                displayedQRCodeStageIDs.insert(stage.id)
                                 qrCodeStage = stage
                             },
                             onTestQRCode: {
@@ -118,7 +117,11 @@ struct HuntPreparationView: View {
             NavigationStack {
                 QRCodePreparationView(
                     payload: stage.verificationPayload,
-                    treasureNumber: stage.orderIndex + 1
+                    treasureNumber: stage.orderIndex + 1,
+                    isPrepared: preparedQRCodeStageIDs.contains(stage.id),
+                    onPrepared: {
+                        preparedQRCodeStageIDs.insert(stage.id)
+                    }
                 )
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
@@ -193,8 +196,8 @@ struct HuntPreparationView: View {
     private func verificationToolIsPrepared(_ stage: TreasureStage) -> Bool {
         TreasurePreparationRequirement.isToolPrepared(
             verification: stage.verification,
-            qrCodeWasDisplayed: displayedQRCodeStageIDs.contains(stage.id),
-            qrCodeIsSupported: QRCodeScannerCapability.isSupported,
+            qrCodeIsPrepared: preparedQRCodeStageIDs.contains(stage.id),
+            qrCodeIsAvailable: QRCodeScannerCapability.isCurrentlyAvailable,
             nfcWasWritten: writtenNFCStageIDs.contains(stage.id),
             nfcIsAvailable: NFCSessionController.isAvailable
         )
@@ -205,7 +208,7 @@ struct HuntPreparationView: View {
     ) -> Bool {
         switch verification {
         case .qrCode:
-            QRCodeScannerCapability.isSupported
+            QRCodeScannerCapability.isCurrentlyAvailable
         case .nfc:
             NFCSessionController.isAvailable
         case .honesty, .passphrase:
@@ -221,7 +224,7 @@ private struct PreparationStageCard: View {
     let isHidden: Bool
     let isTested: Bool
     let isNFCWritten: Bool
-    let isQRCodeDisplayed: Bool
+    let isQRCodePrepared: Bool
     let onShowQRCode: () -> Void
     let onTestQRCode: () -> Void
     let onNFCWritten: () -> Void
@@ -336,11 +339,13 @@ private struct PreparationStageCard: View {
             }
 
         case .qrCode:
-            if QRCodeScannerCapability.isSupported {
+            if QRCodeScannerCapability.isCurrentlyAvailable {
                 VStack(alignment: .leading, spacing: 10) {
                     Button(action: onShowQRCode) {
                         Label(
-                            isQRCodeDisplayed ? "QRコードをもう一度表示" : "QRコードを表示・共有",
+                            isQRCodePrepared
+                                ? "QRコードをもう一度表示"
+                                : "QRコードを表示・共有",
                             systemImage: "qrcode"
                         )
                     }
@@ -406,7 +411,7 @@ private struct PreparationStageCard: View {
     private var verificationIsAvailable: Bool {
         switch stage.verification {
         case .qrCode:
-            QRCodeScannerCapability.isSupported
+            QRCodeScannerCapability.isCurrentlyAvailable
         case .nfc:
             NFCSessionController.isAvailable
         case .honesty, .passphrase:
@@ -417,8 +422,8 @@ private struct PreparationStageCard: View {
     private var verificationToolIsPrepared: Bool {
         TreasurePreparationRequirement.isToolPrepared(
             verification: stage.verification,
-            qrCodeWasDisplayed: isQRCodeDisplayed,
-            qrCodeIsSupported: QRCodeScannerCapability.isSupported,
+            qrCodeIsPrepared: isQRCodePrepared,
+            qrCodeIsAvailable: QRCodeScannerCapability.isCurrentlyAvailable,
             nfcWasWritten: isNFCWritten,
             nfcIsAvailable: NFCSessionController.isAvailable
         )
@@ -445,8 +450,8 @@ private struct PreparationStageCard: View {
 enum TreasurePreparationRequirement {
     nonisolated static func isToolPrepared(
         verification: TreasureVerification,
-        qrCodeWasDisplayed: Bool,
-        qrCodeIsSupported: Bool,
+        qrCodeIsPrepared: Bool,
+        qrCodeIsAvailable: Bool,
         nfcWasWritten: Bool,
         nfcIsAvailable: Bool
     ) -> Bool {
@@ -454,7 +459,7 @@ enum TreasurePreparationRequirement {
         case .honesty, .passphrase:
             return true
         case .qrCode:
-            return qrCodeIsSupported && qrCodeWasDisplayed
+            return qrCodeIsAvailable && qrCodeIsPrepared
         case .nfc:
             return nfcIsAvailable && nfcWasWritten
         }

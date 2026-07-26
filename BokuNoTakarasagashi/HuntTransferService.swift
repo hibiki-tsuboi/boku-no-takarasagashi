@@ -194,13 +194,31 @@ enum HuntTransferService {
     }
 
     nonisolated private static func safeFileName(for title: String) -> String {
-        let invalidCharacters = CharacterSet(charactersIn: "/:\\?%*|\"<>")
+        var invalidCharacters = CharacterSet(
+            charactersIn: "/:\\?%*|\"<>"
+        )
+        invalidCharacters.formUnion(.controlCharacters)
         let components = title.components(separatedBy: invalidCharacters)
         let joined = components
             .joined(separator: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let baseName = joined.isEmpty ? "宝探し" : String(joined.prefix(60))
-        return "\(baseName)-ぼくの宝探し"
+        var baseName = joined.isEmpty ? "宝探し" : String(joined.prefix(60))
+        let suffix = "-ぼくの宝探し"
+        let pathExtension = ".json"
+        let maximumFileSystemByteCount = 240
+
+        while !baseName.isEmpty {
+            let fileName = baseName + suffix
+            let byteCount = (fileName + pathExtension)
+                .decomposedStringWithCanonicalMapping
+                .utf8
+                .count
+            if byteCount <= maximumFileSystemByteCount {
+                return fileName
+            }
+            baseName.removeLast()
+        }
+        return "treasure-hunt"
     }
 }
 

@@ -12,6 +12,7 @@ struct OpeningVideoView: View {
     let onFinished: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var player: AVPlayer?
     @State private var didFinish = false
@@ -57,11 +58,20 @@ struct OpeningVideoView: View {
         .statusBarHidden(true)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
-        .onAppear(perform: startPlayback)
         .onAppear {
             skipIsFocused = true
+            if reduceMotion {
+                finish()
+            } else {
+                startPlayback()
+            }
         }
         .onDisappear(perform: stopPlayback)
+        .onChange(of: reduceMotion) { _, shouldReduceMotion in
+            if shouldReduceMotion {
+                finish()
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
             updatePlayback(for: newPhase)
         }

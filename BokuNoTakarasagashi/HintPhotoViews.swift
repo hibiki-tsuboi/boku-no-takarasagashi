@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import CoreTransferable
 import ImageIO
 import PhotosUI
 import SwiftUI
@@ -111,12 +112,17 @@ struct HintPhotoEditor: View {
 
         preparationTask = Task {
             do {
-                guard let sourceData = try await item.loadTransferable(type: Data.self) else {
+                guard let sourceFile = try await item.loadTransferable(
+                    type: SelectedPhotoFile.self
+                ) else {
                     throw HintPhotoProcessingError.unreadable
+                }
+                defer {
+                    try? FileManager.default.removeItem(at: sourceFile.url)
                 }
                 let preparedData = try await Task.detached(priority: .userInitiated) {
                     try Task.checkCancellation()
-                    return try HintPhotoProcessor.storedData(from: sourceData)
+                    return try HintPhotoProcessor.storedData(from: sourceFile.url)
                 }.value
                 try Task.checkCancellation()
                 finishPhotoPreparation(requestID, with: .success(preparedData))
@@ -179,6 +185,31 @@ struct HintPhotoEditor: View {
     }
 }
 
+private nonisolated struct SelectedPhotoFile: Transferable, Sendable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { receivedFile in
+            try HintPhotoProcessor.validateInputFile(at: receivedFile.file)
+
+            let fileExtension = receivedFile.file.pathExtension
+            var destinationURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(
+                    "HintPhoto-\(UUID().uuidString)",
+                    isDirectory: false
+                )
+            if !fileExtension.isEmpty {
+                destinationURL.appendPathExtension(fileExtension)
+            }
+            try FileManager.default.copyItem(
+                at: receivedFile.file,
+                to: destinationURL
+            )
+            return SelectedPhotoFile(url: destinationURL)
+        }
+    }
+}
+
 struct HintPhotoView: View {
     let data: Data
     var maxHeight: CGFloat = 280
@@ -219,8 +250,41 @@ nonisolated enum HintPhotoProcessor {
         guard let source = CGImageSourceCreateWithData(
             data as CFData,
             sourceOptions
-        ),
-        let properties = CGImageSourceCopyPropertiesAtIndex(
+        ) else {
+            throw HintPhotoProcessingError.unreadable
+        }
+        return try storedData(from: source, sourceOptions: sourceOptions)
+    }
+
+    nonisolated static func storedData(from url: URL) throws -> Data {
+        try validateInputFile(at: url)
+
+        let sourceOptions = [
+            kCGImageSourceShouldCache: false,
+        ] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(
+            url as CFURL,
+            sourceOptions
+        ) else {
+            throw HintPhotoProcessingError.unreadable
+        }
+        return try storedData(from: source, sourceOptions: sourceOptions)
+    }
+
+    nonisolated static func validateInputFile(at url: URL) throws {
+        let values = try url.resourceValues(forKeys: [.fileSizeKey])
+        guard let fileSize = values.fileSize,
+              fileSize > 0,
+              fileSize <= maximumInputByteCount else {
+            throw HintPhotoProcessingError.tooLarge
+        }
+    }
+
+    nonisolated private static func storedData(
+        from source: CGImageSource,
+        sourceOptions: CFDictionary
+    ) throws -> Data {
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(
             source,
             0,
             sourceOptions

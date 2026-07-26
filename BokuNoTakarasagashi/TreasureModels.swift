@@ -63,12 +63,14 @@ nonisolated enum TreasureContentLimits {
 }
 
 nonisolated enum TreasureContentValidator {
+    private static let maximumUTF8BytesPerCharacter = 64
+
     static func isValidRequiredText(
         _ value: String,
         maximumLength: Int
     ) -> Bool {
         !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && value.count <= maximumLength
+            && isWithinLimit(value, maximumLength: maximumLength)
     }
 
     static func isWithinLimit(
@@ -76,14 +78,38 @@ nonisolated enum TreasureContentValidator {
         maximumLength: Int
     ) -> Bool {
         value.count <= maximumLength
+            && value.utf8.count <= maximumUTF8ByteCount(
+                forCharacterLimit: maximumLength
+            )
     }
 
     static func limited(
         _ value: String,
         maximumLength: Int
     ) -> String {
-        guard value.count > maximumLength else { return value }
-        return String(value.prefix(maximumLength))
+        guard !isWithinLimit(value, maximumLength: maximumLength) else {
+            return value
+        }
+
+        let maximumByteCount = maximumUTF8ByteCount(
+            forCharacterLimit: maximumLength
+        )
+        var result = ""
+        var characterCount = 0
+        var byteCount = 0
+
+        for character in value {
+            let characterString = String(character)
+            let characterByteCount = characterString.utf8.count
+            guard characterCount < maximumLength,
+                  byteCount <= maximumByteCount - characterByteCount else {
+                break
+            }
+            result.append(character)
+            characterCount += 1
+            byteCount += characterByteCount
+        }
+        return result
     }
 
     static func duplicateTitle(from sourceTitle: String) -> String {
@@ -95,7 +121,16 @@ nonisolated enum TreasureContentValidator {
             TreasureContentLimits.maximumHuntTitleLength - suffix.count,
             0
         )
-        return String(baseTitle.prefix(baseLimit)) + suffix
+        return limited(
+            String(baseTitle.prefix(baseLimit)) + suffix,
+            maximumLength: TreasureContentLimits.maximumHuntTitleLength
+        )
+    }
+
+    static func maximumUTF8ByteCount(
+        forCharacterLimit maximumLength: Int
+    ) -> Int {
+        maximumLength * maximumUTF8BytesPerCharacter
     }
 }
 
@@ -315,11 +350,18 @@ nonisolated enum TreasurePayload {
         candidate.trimmingCharacters(in: .whitespacesAndNewlines)
             .caseInsensitiveCompare(expected) == .orderedSame
     }
+
+    static func isTreasurePayload(_ candidate: String) -> Bool {
+        candidate
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .hasPrefix(prefix)
+    }
 }
 
 nonisolated enum ParentPIN {
     static func digest(_ pin: String) -> String {
-        SHA256.hash(data: Data(pin.utf8))
+        SHA256.hash(data: Data(digitsOnly(pin).utf8))
             .map { String(format: "%02x", $0) }
             .joined()
     }
@@ -329,7 +371,15 @@ nonisolated enum ParentPIN {
     }
 
     static func digitsOnly(_ value: String) -> String {
-        String(value.filter(\.isNumber).prefix(4))
+        value.compactMap { character -> String? in
+            guard let number = character.wholeNumberValue,
+                  (0...9).contains(number) else {
+                return nil
+            }
+            return String(number)
+        }
+        .prefix(4)
+        .joined()
     }
 }
 

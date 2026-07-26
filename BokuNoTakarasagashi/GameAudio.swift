@@ -116,7 +116,11 @@ struct HintSpeechButton: View {
         }
         .buttonStyle(.bordered)
         .tint(TreasureTheme.teal)
-        .accessibilityHint("ヒントを声で読み上げます")
+        .accessibilityHint(
+            controller.isSpeaking && controller.spokenText == text
+                ? "ヒントの読み上げを停止します"
+                : "ヒントを声で読み上げます"
+        )
     }
 }
 

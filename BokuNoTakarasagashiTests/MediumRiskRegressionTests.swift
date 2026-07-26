@@ -15,17 +15,18 @@ final class MediumRiskRegressionTests: XCTestCase {
         let digest = ParentPIN.digest("1234")
 
         XCTAssertTrue(ParentPIN.matches("1234", digest: digest))
+        XCTAssertTrue(ParentPIN.matches("１２３４", digest: digest))
         XCTAssertFalse(ParentPIN.matches("4321", digest: digest))
-        XCTAssertEqual(ParentPIN.digitsOnly("1a２3-45"), "1２34")
+        XCTAssertEqual(ParentPIN.digitsOnly("1a２3-45"), "1234")
     }
 
     @MainActor
-    func testPreparationRequiresQRDisplayAndNFCWrite() {
+    func testPreparationRequiresConfirmedQRAndNFCWrite() {
         XCTAssertFalse(
             TreasurePreparationRequirement.isToolPrepared(
                 verification: .qrCode,
-                qrCodeWasDisplayed: false,
-                qrCodeIsSupported: true,
+                qrCodeIsPrepared: false,
+                qrCodeIsAvailable: true,
                 nfcWasWritten: false,
                 nfcIsAvailable: true
             )
@@ -33,8 +34,17 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertTrue(
             TreasurePreparationRequirement.isToolPrepared(
                 verification: .qrCode,
-                qrCodeWasDisplayed: true,
-                qrCodeIsSupported: true,
+                qrCodeIsPrepared: true,
+                qrCodeIsAvailable: true,
+                nfcWasWritten: false,
+                nfcIsAvailable: true
+            )
+        )
+        XCTAssertFalse(
+            TreasurePreparationRequirement.isToolPrepared(
+                verification: .qrCode,
+                qrCodeIsPrepared: true,
+                qrCodeIsAvailable: false,
                 nfcWasWritten: false,
                 nfcIsAvailable: true
             )
@@ -42,8 +52,8 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertFalse(
             TreasurePreparationRequirement.isToolPrepared(
                 verification: .nfc,
-                qrCodeWasDisplayed: true,
-                qrCodeIsSupported: true,
+                qrCodeIsPrepared: true,
+                qrCodeIsAvailable: true,
                 nfcWasWritten: false,
                 nfcIsAvailable: true
             )
@@ -51,8 +61,8 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertTrue(
             TreasurePreparationRequirement.isToolPrepared(
                 verification: .nfc,
-                qrCodeWasDisplayed: false,
-                qrCodeIsSupported: true,
+                qrCodeIsPrepared: false,
+                qrCodeIsAvailable: true,
                 nfcWasWritten: true,
                 nfcIsAvailable: true
             )
@@ -215,6 +225,13 @@ final class MediumRiskRegressionTests: XCTestCase {
         let sourceData = try XCTUnwrap(sourceImage.pngData())
 
         let storedData = try HintPhotoProcessor.storedData(from: sourceData)
+        let sourceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).png")
+        try sourceData.write(to: sourceURL, options: .atomic)
+        defer {
+            try? FileManager.default.removeItem(at: sourceURL)
+        }
+        let storedFileData = try HintPhotoProcessor.storedData(from: sourceURL)
         let source = try XCTUnwrap(
             CGImageSourceCreateWithData(storedData as CFData, nil)
         )
@@ -233,6 +250,57 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertLessThanOrEqual(
             storedData.count,
             TreasureContentLimits.maximumStagePhotoByteCount
+        )
+        XCTAssertLessThanOrEqual(
+            storedFileData.count,
+            TreasureContentLimits.maximumStagePhotoByteCount
+        )
+    }
+
+    @MainActor
+    func testTransferShareFileSupportsLongEmojiTitle() throws {
+        let package = HuntTransferPackage(
+            title: String(repeating: "👨‍👩‍👧‍👦", count: 60),
+            openingMessage: "開始",
+            completionMessage: "完了",
+            stages: [
+                .init(
+                    hint: "ヒント",
+                    extraHint: nil,
+                    hintImageData: nil,
+                    discoveryMessage: "発見",
+                    verificationRawValue: TreasureVerification.honesty.rawValue,
+                    passphrase: ""
+                ),
+            ]
+        )
+
+        let shareFile = try HuntTransferService.makeTemporaryShareFile(
+            from: package
+        )
+        defer {
+            shareFile.remove()
+        }
+
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: shareFile.fileURL.path)
+        )
+        XCTAssertLessThanOrEqual(
+            shareFile.fileURL.lastPathComponent
+                .decomposedStringWithCanonicalMapping
+                .utf8
+                .count,
+            255
+        )
+    }
+
+    @MainActor
+    func testTreasurePayloadOwnershipDetection() {
+        let payload = TreasurePayload.make(token: UUID().uuidString)
+
+        XCTAssertTrue(TreasurePayload.isTreasurePayload(payload))
+        XCTAssertFalse(
+            TreasurePayload.isTreasurePayload("https://example.com")
         )
     }
 }

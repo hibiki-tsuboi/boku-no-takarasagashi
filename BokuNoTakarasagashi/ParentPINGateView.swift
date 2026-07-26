@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import LocalAuthentication
 import SwiftUI
 
 struct ParentPINGateView: View {
@@ -12,6 +13,7 @@ struct ParentPINGateView: View {
 
     @State private var pin = ""
     @State private var errorMessage: String?
+    @State private var isAuthenticatingDeviceOwner = false
     @FocusState private var pinIsFocused: Bool
 
     var body: some View {
@@ -57,6 +59,24 @@ struct ParentPINGateView: View {
                                         .multilineTextAlignment(.center)
                                         .foregroundStyle(TreasureTheme.coralText)
                                 }
+
+                                Button(action: recoverWithDeviceAuthentication) {
+                                    if isAuthenticatingDeviceOwner {
+                                        ProgressView()
+                                            .frame(maxWidth: .infinity)
+                                    } else {
+                                        Label(
+                                            "PINを忘れた場合",
+                                            systemImage: "faceid"
+                                        )
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(isAuthenticatingDeviceOwner)
+                                .accessibilityHint(
+                                    "Face ID、Touch ID、または端末のパスコードで確認します"
+                                )
                             }
                             .frame(maxWidth: 280)
                         }
@@ -106,6 +126,32 @@ struct ParentPINGateView: View {
             pin = ""
             errorMessage = "PINが違います。もう一度ためしてください。"
             pinIsFocused = true
+        }
+    }
+
+    private func recoverWithDeviceAuthentication() {
+        guard !isAuthenticatingDeviceOwner else { return }
+        pinIsFocused = false
+        errorMessage = nil
+        isAuthenticatingDeviceOwner = true
+
+        Task {
+            defer {
+                isAuthenticatingDeviceOwner = false
+            }
+
+            do {
+                try await ParentAccessAuthenticator.authenticate(
+                    reason: "保護者PINを忘れた場合のロック解除のために認証します。"
+                )
+                onUnlock()
+            } catch let error as LAError where error.code == .userCancel
+                || error.code == .appCancel
+                || error.code == .systemCancel {
+                return
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 }

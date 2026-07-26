@@ -12,6 +12,7 @@ struct AppRootView: View {
     private var hunts: [TreasureHunt]
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var destination = AppDestination.title
     @State private var playingHunt: TreasureHunt?
@@ -21,6 +22,8 @@ struct AppRootView: View {
     @State private var isAuthenticatingParent = false
     @State private var parentAccessError: String?
     @StateObject private var musicCoordinator = BackgroundMusicCoordinator()
+    @StateObject private var privacyShieldController =
+        AppPrivacyShieldWindowController()
 
     init(automaticallyShowsOpening: Bool = true) {
         _isShowingOpeningVideo = State(
@@ -43,7 +46,7 @@ struct AppRootView: View {
                         .zIndex(10)
                 }
 
-                if destination == .parent, scenePhase != .active {
+                if destination == .parent, !parentAccessIsAuthorized {
                     privacyShield
                         .zIndex(20)
                 }
@@ -51,13 +54,20 @@ struct AppRootView: View {
                 TreasureBackgroundArtwork(style: .adventureSelection)
             }
         }
-        .animation(.easeInOut(duration: 0.32), value: destination)
-        .animation(.easeInOut(duration: 0.32), value: isShowingOpeningVideo)
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.32),
+            value: destination
+        )
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.32),
+            value: isShowingOpeningVideo
+        )
         .environmentObject(musicCoordinator)
         .onAppear {
             resumeLockedSessionIfNeeded()
             hasResolvedInitialSession = true
             updateMusic()
+            updatePrivacyShield()
         }
         .onChange(of: backgroundMusicTrack) {
             updateMusic()
@@ -66,10 +76,29 @@ struct AppRootView: View {
             if newPhase == .active, destination != .parent {
                 resumeLockedSessionIfNeeded()
             }
-            if newPhase == .background {
-                closeParentDashboard()
+            if newPhase == .background, destination == .parent {
+                parentAccessIsAuthorized = false
+                parentAccessError = nil
+            }
+            updatePrivacyShield()
+            if newPhase == .active,
+               destination == .parent,
+               !parentAccessIsAuthorized {
+                requestParentAccess()
             }
             updateMusic()
+        }
+        .onChange(of: destination) {
+            updatePrivacyShield()
+        }
+        .onChange(of: parentAccessIsAuthorized) {
+            updatePrivacyShield()
+        }
+        .onChange(of: isAuthenticatingParent) {
+            updatePrivacyShield()
+        }
+        .onChange(of: parentAccessError) {
+            updatePrivacyShield()
         }
         .onChange(of: playingHunt?.id) {
             updateMusic()
@@ -90,6 +119,9 @@ struct AppRootView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(parentAccessError ?? "もう一度ためしてください。")
+        }
+        .onDisappear {
+            privacyShieldController.hide()
         }
     }
 
@@ -113,11 +145,9 @@ struct AppRootView: View {
             )
 
         case .parent:
-            if parentAccessIsAuthorized {
-                ContentView(onShowTitle: closeParentDashboard)
-            } else {
-                privacyShield
-            }
+            ContentView(onShowTitle: closeParentDashboard)
+                .allowsHitTesting(parentAccessIsAuthorized)
+                .accessibilityHidden(!parentAccessIsAuthorized)
         }
     }
 
@@ -177,7 +207,10 @@ struct AppRootView: View {
 
     private var parentAccessErrorIsPresented: Binding<Bool> {
         Binding(
-            get: { parentAccessError != nil },
+            get: {
+                parentAccessError != nil
+                    && !(destination == .parent && !parentAccessIsAuthorized)
+            },
             set: { isPresented in
                 if !isPresented {
                     parentAccessError = nil
@@ -199,7 +232,9 @@ struct AppRootView: View {
             do {
                 try await ParentAccessAuthenticator.authenticate()
                 parentAccessIsAuthorized = true
-                show(.parent)
+                if destination != .parent {
+                    show(.parent)
+                }
             } catch let error as LAError where error.code == .userCancel
                 || error.code == .appCancel
                 || error.code == .systemCancel {
@@ -212,19 +247,45 @@ struct AppRootView: View {
 
     private func closeParentDashboard() {
         parentAccessIsAuthorized = false
+        parentAccessError = nil
         if destination == .parent {
             show(.title)
         }
     }
 
+    private var privacyShieldMode: AppPrivacyShieldMode? {
+        if scenePhase != .active {
+            return .background
+        }
+        if destination == .parent, !parentAccessIsAuthorized {
+            return .parentLocked(
+                isAuthenticating: isAuthenticatingParent,
+                errorMessage: parentAccessError
+            )
+        }
+        return nil
+    }
+
+    private func updatePrivacyShield() {
+        privacyShieldController.update(
+            mode: privacyShieldMode,
+            onUnlock: requestParentAccess,
+            onExit: closeParentDashboard
+        )
+    }
+
     private func show(_ newDestination: AppDestination) {
-        withAnimation(.easeInOut(duration: 0.28)) {
+        withAnimation(
+            reduceMotion ? nil : .easeInOut(duration: 0.28)
+        ) {
             destination = newDestination
         }
     }
 
     private func finishOpeningVideo() {
-        withAnimation(.easeInOut(duration: 0.32)) {
+        withAnimation(
+            reduceMotion ? nil : .easeInOut(duration: 0.32)
+        ) {
             isShowingOpeningVideo = false
         }
     }

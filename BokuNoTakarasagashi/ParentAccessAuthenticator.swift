@@ -6,7 +6,9 @@
 import LocalAuthentication
 
 enum ParentAccessAuthenticator {
-    static func authenticate() async throws {
+    static func authenticate(
+        reason: String = "おうちの人専用画面を開くために認証します。"
+    ) async throws {
         let context = LAContext()
         context.localizedCancelTitle = "キャンセル"
 
@@ -22,7 +24,7 @@ enum ParentAccessAuthenticator {
 
         let succeeded = try await context.evaluatePolicy(
             .deviceOwnerAuthentication,
-            localizedReason: "おうちの人専用画面を開くために認証します。"
+            localizedReason: reason
         )
         guard succeeded else {
             throw ParentAccessAuthenticationError.failed

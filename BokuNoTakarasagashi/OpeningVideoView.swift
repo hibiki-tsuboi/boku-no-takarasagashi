@@ -115,11 +115,6 @@ struct OpeningVideoView: View {
     private func stopPlayback() {
         player?.pause()
         player = nil
-
-        try? AVAudioSession.sharedInstance().setActive(
-            false,
-            options: .notifyOthersOnDeactivation
-        )
     }
 
     private func isCurrentPlayerItem(_ object: Any?) -> Bool {

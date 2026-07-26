@@ -449,6 +449,7 @@ private struct HuntCard: View {
 
 #Preview {
     ContentView()
+        .environmentObject(BackgroundMusicCoordinator())
         .modelContainer(
             for: [TreasureHunt.self, TreasureStage.self, AdventureRecord.self],
             inMemory: true

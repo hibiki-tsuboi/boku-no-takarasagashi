@@ -10,9 +10,12 @@ struct AppRootView: View {
     @Query(sort: \TreasureHunt.updatedAt, order: .reverse)
     private var hunts: [TreasureHunt]
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var destination = AppDestination.title
     @State private var playingHunt: TreasureHunt?
     @State private var isShowingOpeningVideo: Bool
+    @StateObject private var musicCoordinator = BackgroundMusicCoordinator()
 
     init(automaticallyShowsOpening: Bool = true) {
         _isShowingOpeningVideo = State(
@@ -34,8 +37,19 @@ struct AppRootView: View {
         }
         .animation(.easeInOut(duration: 0.32), value: destination)
         .animation(.easeInOut(duration: 0.32), value: isShowingOpeningVideo)
+        .environmentObject(musicCoordinator)
+        .onAppear {
+            updateMusic()
+        }
+        .onChange(of: backgroundMusicTrack) {
+            updateMusic()
+        }
+        .onChange(of: scenePhase) {
+            updateMusic()
+        }
         .fullScreenCover(item: $playingHunt) { hunt in
             PlaySessionView(hunt: hunt)
+                .environmentObject(musicCoordinator)
         }
     }
 
@@ -69,6 +83,24 @@ struct AppRootView: View {
     private var resumableHunt: TreasureHunt? {
         hunts.first(where: \.isChildModeLocked)
             ?? hunts.first { $0.playState == .inProgress }
+    }
+
+    private var backgroundMusicTrack: BackgroundMusicTrack? {
+        guard !isShowingOpeningVideo else { return nil }
+
+        switch destination {
+        case .title:
+            return .title
+        case .adventures:
+            return .adventureMenu
+        case .parent:
+            return .parentMenu
+        }
+    }
+
+    private func updateMusic() {
+        musicCoordinator.setBaseTrack(backgroundMusicTrack)
+        musicCoordinator.setSceneActive(scenePhase == .active)
     }
 
     private func show(_ newDestination: AppDestination) {

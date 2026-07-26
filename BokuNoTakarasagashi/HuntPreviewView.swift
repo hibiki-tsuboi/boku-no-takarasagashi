@@ -9,6 +9,8 @@ struct HuntPreviewView: View {
     let hunt: TreasureHunt
     let onPrepare: () -> Void
 
+    @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
+
     @State private var stageIndex = 0
     @State private var revealedExtraHintStageIDs: Set<UUID> = []
     @State private var isShowingCompletion = false
@@ -17,6 +19,7 @@ struct HuntPreviewView: View {
     @State private var passphrase = ""
     @State private var answerError: String?
     @State private var isCelebrating = false
+    @State private var musicRequestID: UUID?
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
@@ -63,8 +66,19 @@ struct HuntPreviewView: View {
             }
         }
         .sensoryFeedback(.success, trigger: isShowingDiscovery)
+        .onAppear {
+            beginMusicRequest()
+        }
+        .onChange(of: backgroundMusicTrack) { _, track in
+            updateMusicRequest(track)
+        }
+        .onChange(of: speechController.isSpeaking) { _, isSpeaking in
+            musicCoordinator.setDucked(isSpeaking)
+        }
         .onDisappear {
             speechController.stop()
+            musicCoordinator.setDucked(false)
+            endMusicRequest()
         }
     }
 
@@ -407,6 +421,35 @@ struct HuntPreviewView: View {
 
     private var currentStageIsLast: Bool {
         stageIndex == stages.count - 1
+    }
+
+    private var backgroundMusicTrack: BackgroundMusicTrack {
+        if isShowingDiscovery || isShowingCompletion {
+            return .discovery
+        }
+        return BackgroundMusicTrack.gameplayTrack(for: stageIndex)
+    }
+
+    private func beginMusicRequest() {
+        guard musicRequestID == nil else {
+            updateMusicRequest(backgroundMusicTrack)
+            return
+        }
+        musicRequestID = musicCoordinator.begin(backgroundMusicTrack)
+    }
+
+    private func updateMusicRequest(_ track: BackgroundMusicTrack) {
+        guard let musicRequestID else {
+            beginMusicRequest()
+            return
+        }
+        musicCoordinator.update(musicRequestID, track: track)
+    }
+
+    private func endMusicRequest() {
+        guard let musicRequestID else { return }
+        musicCoordinator.end(musicRequestID)
+        self.musicRequestID = nil
     }
 
     private func checkPassphrase() {

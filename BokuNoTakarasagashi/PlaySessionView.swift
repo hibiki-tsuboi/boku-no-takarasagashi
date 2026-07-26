@@ -11,6 +11,7 @@ struct PlaySessionView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var musicCoordinator: BackgroundMusicCoordinator
 
     @State private var phase: PlayPhase
     @State private var safetyIsConfirmed = false
@@ -22,6 +23,7 @@ struct PlaySessionView: View {
     @State private var answerError: String?
     @State private var persistenceError: String?
     @State private var completedRecord: AdventureRecord?
+    @State private var musicRequestID: UUID?
     @StateObject private var speechController = HintSpeechController()
     @StateObject private var soundPlayer = GameSoundPlayer()
 
@@ -136,9 +138,20 @@ struct PlaySessionView: View {
             Text(persistenceError ?? "もう一度ためしてください。")
         }
         .sensoryFeedback(.success, trigger: isShowingDiscovery)
-        .onAppear(perform: loadCompletionRecordIfNeeded)
+        .onAppear {
+            loadCompletionRecordIfNeeded()
+            beginMusicRequest()
+        }
+        .onChange(of: backgroundMusicTrack) { _, track in
+            updateMusicRequest(track)
+        }
+        .onChange(of: speechController.isSpeaking) { _, isSpeaking in
+            musicCoordinator.setDucked(isSpeaking)
+        }
         .onDisappear {
             speechController.stop()
+            musicCoordinator.setDucked(false)
+            endMusicRequest()
         }
     }
 
@@ -349,6 +362,23 @@ struct PlaySessionView: View {
         hunt.currentStageIndex == hunt.sortedStages.count - 1
     }
 
+    private var backgroundMusicTrack: BackgroundMusicTrack {
+        if isShowingDiscovery {
+            return .discovery
+        }
+        if case .completed = phase {
+            return .discovery
+        }
+
+        if case .playing = phase {
+            return BackgroundMusicTrack.gameplayTrack(
+                for: hunt.currentStageIndex
+            )
+        }
+
+        return .adventureMenu
+    }
+
     private var persistenceErrorIsPresented: Binding<Bool> {
         Binding(
             get: { persistenceError != nil },
@@ -358,6 +388,28 @@ struct PlaySessionView: View {
                 }
             }
         )
+    }
+
+    private func beginMusicRequest() {
+        guard musicRequestID == nil else {
+            updateMusicRequest(backgroundMusicTrack)
+            return
+        }
+        musicRequestID = musicCoordinator.begin(backgroundMusicTrack)
+    }
+
+    private func updateMusicRequest(_ track: BackgroundMusicTrack) {
+        guard let musicRequestID else {
+            beginMusicRequest()
+            return
+        }
+        musicCoordinator.update(musicRequestID, track: track)
+    }
+
+    private func endMusicRequest() {
+        guard let musicRequestID else { return }
+        musicCoordinator.end(musicRequestID)
+        self.musicRequestID = nil
     }
 
     private func startPlaying() {

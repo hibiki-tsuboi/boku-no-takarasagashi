@@ -46,7 +46,7 @@ struct PlaySessionView: View {
 
     var body: some View {
         ZStack {
-            TreasureBackground {
+            TreasureBackground(style: backgroundStyle) {
                 switch phase {
                 case .preparation:
                     HuntPreparationView(
@@ -139,6 +139,19 @@ struct PlaySessionView: View {
         .onAppear(perform: loadCompletionRecordIfNeeded)
         .onDisappear {
             speechController.stop()
+        }
+    }
+
+    private var backgroundStyle: TreasureBackgroundStyle {
+        switch phase {
+        case .preparation:
+            .preparation
+        case .safety, .handoff:
+            .safety
+        case .playing:
+            .playing
+        case .completed:
+            .completion
         }
     }
 

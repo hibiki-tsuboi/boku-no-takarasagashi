@@ -19,7 +19,7 @@ struct AdventureHistoryView: View {
         NavigationStack {
             Group {
                 if records.isEmpty {
-                    TreasureBackground {
+                    TreasureBackground(style: .history) {
                         ContentUnavailableView {
                             Label("まだ記録がありません", systemImage: "trophy")
                         } description: {
@@ -42,7 +42,7 @@ struct AdventureHistoryView: View {
                         }
                     }
                     .scrollContentBackground(.hidden)
-                    .background(TreasureTheme.background)
+                    .treasureBackground(.history)
                 }
             }
             .navigationTitle("冒険のきろく")

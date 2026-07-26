@@ -15,7 +15,7 @@ struct ParentPINGateView: View {
 
     var body: some View {
         NavigationStack {
-            TreasureBackground {
+            TreasureBackground(style: .security) {
                 VStack(spacing: 22) {
                     Spacer()
 

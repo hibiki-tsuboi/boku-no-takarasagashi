@@ -115,7 +115,7 @@ struct HuntCreationFlowView: View {
             HuntEditorView(hunt: nil, template: selectedTemplate)
         } else {
             NavigationStack {
-                TreasureBackground {
+                TreasureBackground(style: .editor) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
                             VStack(alignment: .leading, spacing: 6) {

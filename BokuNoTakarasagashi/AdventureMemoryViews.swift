@@ -72,7 +72,7 @@ struct AdventureMemoryEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(TreasureTheme.background)
+            .treasureBackground(.memory)
             .navigationTitle("冒険の思い出")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -192,7 +192,7 @@ struct AdventureMemoryDetailView: View {
     @State private var isSharing = false
 
     var body: some View {
-        TreasureBackground {
+        TreasureBackground(style: .memory) {
             ScrollView {
                 VStack(spacing: 20) {
                     if let photoData = record.victoryPhotoData {

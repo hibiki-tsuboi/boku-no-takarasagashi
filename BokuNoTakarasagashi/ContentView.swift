@@ -31,7 +31,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            TreasureBackground {
+            TreasureBackground(style: .parent) {
                 ScrollView {
                     VStack(spacing: 28) {
                         hero

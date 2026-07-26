@@ -22,27 +22,58 @@ enum TreasureTheme {
     )
 }
 
+enum TreasureBackgroundStyle: String {
+    case adventureSelection = "BackgroundAdventureSelection"
+    case parent = "BackgroundParent"
+    case editor = "BackgroundEditor"
+    case preparation = "BackgroundPreparation"
+    case safety = "BackgroundSafety"
+    case playing = "BackgroundPlaying"
+    case completion = "BackgroundCompletion"
+    case history = "BackgroundHistory"
+    case memory = "BackgroundMemory"
+    case security = "BackgroundSecurity"
+}
+
+struct TreasureBackgroundArtwork: View {
+    let style: TreasureBackgroundStyle
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                TreasureTheme.background
+
+                Image(style.rawValue)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(
+                        width: proxy.size.width,
+                        height: proxy.size.height
+                    )
+                    .clipped()
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
 struct TreasureBackground<Content: View>: View {
+    private let style: TreasureBackgroundStyle
     private let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(
+        style: TreasureBackgroundStyle = .parent,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.style = style
         self.content = content()
     }
 
     var body: some View {
         ZStack {
-            TreasureTheme.background
-                .ignoresSafeArea()
-
-            Circle()
-                .fill(TreasureTheme.gold.opacity(0.14))
-                .frame(width: 260, height: 260)
-                .offset(x: 150, y: -310)
-
-            Circle()
-                .fill(TreasureTheme.teal.opacity(0.10))
-                .frame(width: 320, height: 320)
-                .offset(x: -180, y: 360)
+            TreasureBackgroundArtwork(style: style)
 
             content
         }
@@ -65,6 +96,12 @@ struct TreasureCardModifier: ViewModifier {
 extension View {
     func treasureCard() -> some View {
         modifier(TreasureCardModifier())
+    }
+
+    func treasureBackground(_ style: TreasureBackgroundStyle) -> some View {
+        background {
+            TreasureBackgroundArtwork(style: style)
+        }
     }
 }
 

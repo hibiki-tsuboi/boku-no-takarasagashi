@@ -37,7 +37,7 @@ struct ProtectedHuntActionView: View {
     var body: some View {
         if isUnlocked {
             NavigationStack {
-                TreasureBackground {
+                TreasureBackground(style: backgroundStyle) {
                     switch request.action {
                     case .preview:
                         HuntPreviewView(
@@ -78,6 +78,15 @@ struct ProtectedHuntActionView: View {
             "宝探しを複製"
         case .share:
             "宝探しを共有"
+        }
+    }
+
+    private var backgroundStyle: TreasureBackgroundStyle {
+        switch request.action {
+        case .preview:
+            .playing
+        case .duplicate, .share:
+            .parent
         }
     }
 
@@ -348,7 +357,7 @@ struct HuntImportView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(TreasureTheme.background)
+            .treasureBackground(.parent)
             .navigationTitle("宝探しを読み込む")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

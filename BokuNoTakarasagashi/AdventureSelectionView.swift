@@ -17,7 +17,7 @@ struct AdventureSelectionView: View {
 
     var body: some View {
         NavigationStack {
-            TreasureBackground {
+            TreasureBackground(style: .adventureSelection) {
                 ScrollView {
                     VStack(spacing: 24) {
                         header

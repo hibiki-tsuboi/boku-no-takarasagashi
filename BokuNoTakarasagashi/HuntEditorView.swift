@@ -115,7 +115,7 @@ struct HuntEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(TreasureTheme.background)
+            .treasureBackground(.editor)
             .navigationTitle(hunt == nil ? "宝探しをつくる" : "宝探しを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -452,7 +452,7 @@ private struct StageEditorView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(TreasureTheme.background)
+        .treasureBackground(.editor)
         .navigationTitle(isLast ? "宝 \(number)・ゴール" : "宝 \(number)")
         .navigationBarTitleDisplayMode(.inline)
         .tint(TreasureTheme.teal)

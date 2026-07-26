@@ -21,7 +21,7 @@ struct QRCodePreparationView: View {
     }
 
     var body: some View {
-        TreasureBackground {
+        TreasureBackground(style: .preparation) {
             ScrollView {
                 VStack(spacing: 22) {
                     VStack(spacing: 7) {
@@ -108,7 +108,7 @@ struct QRCodeScannerView: View {
 
                     scannerOverlay
                 } else {
-                    TreasureBackground {
+                    TreasureBackground(style: .preparation) {
                         ContentUnavailableView {
                             Label("カメラを使えません", systemImage: "camera.fill")
                         } description: {

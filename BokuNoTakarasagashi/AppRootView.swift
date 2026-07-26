@@ -10,19 +10,13 @@ struct AppRootView: View {
     @Query(sort: \TreasureHunt.updatedAt, order: .reverse)
     private var hunts: [TreasureHunt]
 
-    @AppStorage(OpeningVideoPreference.hasPlayedKey)
-    private var hasPlayedOpeningVideo = false
-
     @State private var destination = AppDestination.title
     @State private var playingHunt: TreasureHunt?
     @State private var isShowingOpeningVideo: Bool
 
     init(automaticallyShowsOpening: Bool = true) {
-        let hasPlayed = UserDefaults.standard.bool(
-            forKey: OpeningVideoPreference.hasPlayedKey
-        )
         _isShowingOpeningVideo = State(
-            initialValue: automaticallyShowsOpening && !hasPlayed
+            initialValue: automaticallyShowsOpening
         )
     }
 
@@ -90,8 +84,6 @@ struct AppRootView: View {
     }
 
     private func finishOpeningVideo() {
-        hasPlayedOpeningVideo = true
-
         withAnimation(.easeInOut(duration: 0.32)) {
             isShowingOpeningVideo = false
         }
@@ -102,10 +94,6 @@ private enum AppDestination: Hashable {
     case title
     case adventures
     case parent
-}
-
-private enum OpeningVideoPreference {
-    static let hasPlayedKey = "hasPlayedOpeningVideo.v1"
 }
 
 #Preview {

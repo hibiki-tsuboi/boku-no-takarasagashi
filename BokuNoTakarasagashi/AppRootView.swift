@@ -101,8 +101,7 @@ struct AppRootView: View {
                 resumableHunt: resumableHunt,
                 onStart: { show(.adventures) },
                 onResume: { playingHunt = $0 },
-                onOpenParent: requestParentAccess,
-                onPlayOpening: showOpeningVideo
+                onOpenParent: requestParentAccess
             )
 
         case .adventures:
@@ -221,12 +220,6 @@ struct AppRootView: View {
     private func show(_ newDestination: AppDestination) {
         withAnimation(.easeInOut(duration: 0.28)) {
             destination = newDestination
-        }
-    }
-
-    private func showOpeningVideo() {
-        withAnimation(.easeInOut(duration: 0.32)) {
-            isShowingOpeningVideo = true
         }
     }
 

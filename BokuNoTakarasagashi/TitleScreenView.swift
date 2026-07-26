@@ -10,6 +10,7 @@ struct TitleScreenView: View {
     let onStart: () -> Void
     let onResume: (TreasureHunt) -> Void
     let onOpenParent: () -> Void
+    let onPlayOpening: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -85,6 +86,20 @@ struct TitleScreenView: View {
                             .padding(.vertical, 10)
                         }
                         .buttonStyle(.plain)
+
+                        Button(action: onPlayOpening) {
+                            Label(
+                                "オープニングを見る",
+                                systemImage: "play.rectangle.fill"
+                            )
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.92))
+                            .padding(.vertical, 5)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(
+                            "オープニング映像をもう一度再生します"
+                        )
                     }
                     .padding(.horizontal, 24)
                     .padding(
@@ -192,6 +207,7 @@ private struct TitleSecondaryButtonStyle: ButtonStyle {
         resumableHunt: nil,
         onStart: {},
         onResume: { _ in },
-        onOpenParent: {}
+        onOpenParent: {},
+        onPlayOpening: {}
     )
 }

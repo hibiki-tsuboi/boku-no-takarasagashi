@@ -502,11 +502,19 @@ private struct StageEditorView: View {
                             maximumLength: TreasureContentLimits.maximumHintLength
                         )
                     }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("写真（任意）")
+                        .font(.subheadline.weight(.semibold))
+
+                    HintPhotoEditor(imageData: $draft.hintImageData)
+                }
             } header: {
                 Text("ヒント")
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("隠し場所を直接言わず、子どもが考えられる言葉にします。")
+                    Text("写真には、隠し場所の一部分など答えがすぐ分からないものがおすすめです。")
                     CharacterLimitStatus(
                         count: draft.hint.count,
                         maximum: TreasureContentLimits.maximumHintLength
@@ -533,14 +541,6 @@ private struct StageEditorView: View {
                         maximum: TreasureContentLimits.maximumExtraHintLength
                     )
                 }
-            }
-
-            Section {
-                HintPhotoEditor(imageData: $draft.hintImageData)
-            } header: {
-                Text("写真ヒント（任意）")
-            } footer: {
-                Text("隠し場所の一部分など、答えがすぐ分からない写真がおすすめです。")
             }
 
             Section {

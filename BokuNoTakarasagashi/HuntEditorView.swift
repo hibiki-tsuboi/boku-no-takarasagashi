@@ -29,18 +29,22 @@ struct HuntEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("例：おうちの大冒険", text: $draft.title)
-                        .onChange(of: draft.title) { _, newValue in
-                            draft.title = TreasureContentValidator.limited(
-                                newValue,
-                                maximumLength: TreasureContentLimits.maximumHuntTitleLength
-                            )
-                        }
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("例：おうちの大冒険", text: $draft.title)
+                            .onChange(of: draft.title) { _, newValue in
+                                draft.title = TreasureContentValidator.limited(
+                                    newValue,
+                                    maximumLength: TreasureContentLimits
+                                        .maximumHuntTitleLength
+                                )
+                            }
 
-                    CharacterLimitStatus(
-                        count: draft.title.count,
-                        maximum: TreasureContentLimits.maximumHuntTitleLength
-                    )
+                        CharacterLimitStatus(
+                            count: draft.title.count,
+                            maximum: TreasureContentLimits.maximumHuntTitleLength
+                        )
+                    }
+                    .listRowSeparator(.hidden)
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("はじまりのメッセージ")
@@ -337,6 +341,8 @@ struct HuntEditorView: View {
                 verification: stageDraft.verification,
                 passphrase: stageDraft.passphrase.trimmed,
                 verificationToken: stageDraft.verificationToken,
+                nfcWrittenVerificationToken:
+                    stageDraft.nfcWrittenVerificationToken,
                 hunt: destination
             )
             modelContext.insert(stage)
@@ -360,7 +366,7 @@ private struct HuntDraft: Equatable {
     var stages: [StageDraft]
 
     init(hunt: TreasureHunt?, template: HuntTemplate? = nil) {
-        title = hunt?.title ?? ""
+        title = hunt?.title ?? "おうちの宝探し"
         openingMessage = hunt?.openingMessage ?? "ヒントをたどって、さいごの宝を見つけよう！"
         completionMessage = hunt?.completionMessage ?? "ぜんぶの宝を見つけた！おめでとう！"
 
@@ -394,6 +400,7 @@ private struct StageDraft: Identifiable, Equatable {
     var verification: TreasureVerification
     var passphrase: String
     var verificationToken: String
+    var nfcWrittenVerificationToken: String?
 
     init(
         id: UUID = UUID(),
@@ -403,7 +410,8 @@ private struct StageDraft: Identifiable, Equatable {
         discoveryMessage: String = "やったね！宝を見つけた！",
         verification: TreasureVerification = .honesty,
         passphrase: String = "",
-        verificationToken: String = UUID().uuidString
+        verificationToken: String = UUID().uuidString,
+        nfcWrittenVerificationToken: String? = nil
     ) {
         self.id = id
         self.hint = hint
@@ -415,6 +423,7 @@ private struct StageDraft: Identifiable, Equatable {
         self.verification = verification
         self.passphrase = passphrase
         self.verificationToken = verificationToken
+        self.nfcWrittenVerificationToken = nfcWrittenVerificationToken
     }
 
     init(stage: TreasureStage) {
@@ -431,10 +440,15 @@ private struct StageDraft: Identifiable, Equatable {
         verification = stage.verification
         passphrase = stage.passphrase
         verificationToken = stage.verificationToken ?? stage.id.uuidString
+        nfcWrittenVerificationToken = stage.nfcWrittenVerificationToken
     }
 
     var verificationPayload: String {
         TreasurePayload.make(token: verificationToken)
+    }
+
+    var nfcTagWasWritten: Bool {
+        nfcWrittenVerificationToken == verificationToken
     }
 
     var availableExtraHints: [ExtraHintDraft] {
@@ -724,7 +738,14 @@ private struct StageEditorView: View {
                 }
 
                 if draft.verification == .nfc && NFCSessionController.isAvailable {
-                    NFCWriterControl(payload: draft.verificationPayload)
+                    NFCWriterControl(
+                        payload: draft.verificationPayload,
+                        wasPreviouslyWritten: draft.nfcTagWasWritten,
+                        onWriteSuccess: {
+                            draft.nfcWrittenVerificationToken =
+                                draft.verificationToken
+                        }
+                    )
                 }
             } header: {
                 Text("見つけたことの確認")

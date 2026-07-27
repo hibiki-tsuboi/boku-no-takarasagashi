@@ -998,27 +998,31 @@ struct PlaySetupHeader: View {
     let onClose: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.headline)
-                    .frame(width: 36, height: 36)
+                    .font(.headline.bold())
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(TreasureTheme.ink, in: Circle())
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.circle)
-            .tint(TreasureTheme.ink)
+            .buttonStyle(.plain)
+            .contentShape(Circle())
             .accessibilityLabel("閉じる")
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Text(title)
                 .font(.headline)
                 .foregroundStyle(TreasureTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Color.clear
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)

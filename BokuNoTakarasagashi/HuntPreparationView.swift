@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import SwiftData
 import SwiftUI
 
 struct HuntPreparationView: View {
@@ -10,12 +11,14 @@ struct HuntPreparationView: View {
     let onClose: () -> Void
     let onContinue: () -> Void
 
+    @Environment(\.modelContext) private var modelContext
+
     @State private var hiddenStageIDs: Set<UUID> = []
     @State private var testedStageIDs: Set<UUID> = []
-    @State private var writtenNFCStageIDs: Set<UUID> = []
     @State private var preparedQRCodeStageIDs: Set<UUID> = []
     @State private var qrCodeStage: TreasureStage?
     @State private var qrCodeTestStage: TreasureStage?
+    @State private var nfcStateSaveError: String?
 
     private var stages: [TreasureStage] {
         hunt.sortedStages
@@ -66,7 +69,7 @@ struct HuntPreparationView: View {
                             isLast: index == stages.count - 1,
                             isHidden: hiddenStageIDs.contains(stage.id),
                             isTested: testedStageIDs.contains(stage.id),
-                            isNFCWritten: writtenNFCStageIDs.contains(stage.id),
+                            isNFCWritten: stage.nfcTagWasWritten,
                             isQRCodePrepared: preparedQRCodeStageIDs.contains(stage.id),
                             onShowQRCode: {
                                 qrCodeStage = stage
@@ -75,10 +78,11 @@ struct HuntPreparationView: View {
                                 qrCodeTestStage = stage
                             },
                             onNFCWritten: {
-                                writtenNFCStageIDs.insert(stage.id)
+                                recordPreparedNFC(for: stage)
                             },
                             onNFCTested: {
                                 testedStageIDs.insert(stage.id)
+                                recordPreparedNFC(for: stage)
                             },
                             onToggleHidden: {
                                 toggleHidden(stage)
@@ -116,6 +120,11 @@ struct HuntPreparationView: View {
                 .padding(.bottom, 36)
             }
         }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .top
+        )
         .sheet(item: $qrCodeStage) { stage in
             NavigationStack {
                 QRCodePreparationView(
@@ -142,6 +151,17 @@ struct HuntPreparationView: View {
                     testedStageIDs.insert(stage.id)
                     qrCodeTestStage = nil
                 }
+            )
+        }
+        .alert(
+            "NFCの準備状態を保存できませんでした",
+            isPresented: nfcStateSaveErrorIsPresented
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(
+                nfcStateSaveError
+                    ?? "NFCタグの確認は完了していますが、次回もう一度確認が必要になることがあります。"
             )
         }
     }
@@ -205,9 +225,31 @@ struct HuntPreparationView: View {
             verification: stage.verification,
             qrCodeIsPrepared: preparedQRCodeStageIDs.contains(stage.id),
             qrCodeIsAvailable: QRCodeScannerCapability.isCurrentlyAvailable,
-            nfcWasWritten: writtenNFCStageIDs.contains(stage.id),
+            nfcWasWritten: stage.nfcTagWasWritten,
             nfcIsAvailable: NFCSessionController.isAvailable
         )
+    }
+
+    private var nfcStateSaveErrorIsPresented: Binding<Bool> {
+        Binding(
+            get: { nfcStateSaveError != nil },
+            set: { isPresented in
+                if !isPresented {
+                    nfcStateSaveError = nil
+                }
+            }
+        )
+    }
+
+    private func recordPreparedNFC(for stage: TreasureStage) {
+        stage.markNFCTagWritten()
+
+        do {
+            try modelContext.save()
+        } catch {
+            nfcStateSaveError =
+                "NFCタグの確認は完了していますが、準備済みの状態を保存できませんでした。"
+        }
     }
 
     private func verificationIsAvailable(
@@ -403,15 +445,10 @@ private struct PreparationStageCard: View {
                 VStack(alignment: .leading, spacing: 12) {
                     NFCWriterControl(
                         payload: stage.verificationPayload,
+                        wasPreviouslyWritten: isNFCWritten,
                         onWriteSuccess: onNFCWritten
                     )
                     .buttonStyle(.bordered)
-
-                    if isNFCWritten {
-                        Label("この宝のデータを書き込み済み", systemImage: "checkmark.circle.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(TreasureTheme.tealText)
-                    }
 
                     NFCReaderControl(
                         expectedPayload: stage.verificationPayload,
@@ -423,6 +460,12 @@ private struct PreparationStageCard: View {
                         usesPrimaryButtonStyle: false,
                         onMatch: onNFCTested
                     )
+
+                    if !isNFCWritten {
+                        Text("以前に書き込み済みなら、読み取りテストでも準備済みにできます。")
+                            .font(.caption)
+                            .foregroundStyle(TreasureTheme.secondaryText)
+                    }
 
                     VerificationTestStatus(isTested: isTested)
                 }

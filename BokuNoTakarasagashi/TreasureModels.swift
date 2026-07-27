@@ -266,6 +266,7 @@ final class TreasureStage {
     var verificationRawValue: String
     var passphrase: String
     var verificationToken: String?
+    var nfcWrittenVerificationToken: String?
     var hunt: TreasureHunt?
 
     init(
@@ -282,6 +283,7 @@ final class TreasureStage {
         verification: TreasureVerification,
         passphrase: String,
         verificationToken: String = UUID().uuidString,
+        nfcWrittenVerificationToken: String? = nil,
         hunt: TreasureHunt? = nil
     ) {
         id = UUID()
@@ -298,6 +300,7 @@ final class TreasureStage {
         verificationRawValue = verification.rawValue
         self.passphrase = passphrase
         self.verificationToken = verificationToken
+        self.nfcWrittenVerificationToken = nfcWrittenVerificationToken
         self.hunt = hunt
     }
 
@@ -312,6 +315,14 @@ final class TreasureStage {
 
     var verificationPayload: String {
         TreasurePayload.make(token: verificationToken ?? id.uuidString)
+    }
+
+    var nfcTagWasWritten: Bool {
+        nfcWrittenVerificationToken == (verificationToken ?? id.uuidString)
+    }
+
+    func markNFCTagWritten() {
+        nfcWrittenVerificationToken = verificationToken ?? id.uuidString
     }
 
     var availableExtraHints: [String] {

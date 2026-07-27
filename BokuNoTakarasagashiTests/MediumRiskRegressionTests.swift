@@ -139,6 +139,51 @@ final class MediumRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testNFCWriteStatePersistsAndMatchesVerificationToken() throws {
+        let schema = Schema([
+            TreasureHunt.self,
+            TreasureStage.self,
+            AdventureRecord.self,
+        ])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true
+        )
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(container)
+        let stage = TreasureStage(
+            orderIndex: 0,
+            hint: "NFCの宝",
+            discoveryMessage: "発見",
+            verification: .nfc,
+            passphrase: "",
+            verificationToken: "written-token"
+        )
+        context.insert(stage)
+
+        XCTAssertFalse(stage.nfcTagWasWritten)
+
+        stage.markNFCTagWritten()
+        try context.save()
+
+        let verificationContext = ModelContext(container)
+        let savedStage = try XCTUnwrap(
+            verificationContext.fetch(
+                FetchDescriptor<TreasureStage>()
+            ).first
+        )
+
+        XCTAssertTrue(savedStage.nfcTagWasWritten)
+
+        savedStage.verificationToken = "different-token"
+
+        XCTAssertFalse(savedStage.nfcTagWasWritten)
+    }
+
+    @MainActor
     func testTransferRejectsEleventhStageBeforeDecodingPackage() throws {
         let stage = """
         {

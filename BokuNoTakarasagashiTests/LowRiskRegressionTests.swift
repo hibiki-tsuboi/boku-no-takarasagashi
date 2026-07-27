@@ -147,8 +147,10 @@ final class LowRiskRegressionTests: XCTestCase {
             extraHint: "写真つきおたすけ",
             extraHintImageData: Data([0x01, 0x02]),
             discoveryMessage: "発見",
-            verification: .honesty,
+            verification: .nfc,
             passphrase: "",
+            verificationToken: "source-nfc-token",
+            nfcWrittenVerificationToken: "source-nfc-token",
             hunt: hunt
         )
         context.insert(hunt)
@@ -172,6 +174,10 @@ final class LowRiskRegressionTests: XCTestCase {
                     imageData: Data([0x01, 0x02])
                 ),
             ]
+        )
+        XCTAssertTrue(stage.nfcTagWasWritten)
+        XCTAssertFalse(
+            try XCTUnwrap(copy.sortedStages.first).nfcTagWasWritten
         )
         XCTAssertNoThrow(try copyPackage.validate())
     }

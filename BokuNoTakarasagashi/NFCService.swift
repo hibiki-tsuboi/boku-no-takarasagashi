@@ -8,19 +8,24 @@ import SwiftUI
 
 struct NFCWriterControl: View {
     let payload: String
+    let wasPreviouslyWritten: Bool
     let onWriteSuccess: () -> Void
 
     @State private var sessionController: NFCSessionController?
     @State private var resultMessage: String?
     @State private var writeSucceeded = false
+    @State private var resultIsError = false
     @State private var isConfirmingOverwrite = false
 
     init(
         payload: String,
+        wasPreviouslyWritten: Bool = false,
         onWriteSuccess: @escaping () -> Void = {}
     ) {
         self.payload = payload
+        self.wasPreviouslyWritten = wasPreviouslyWritten
         self.onWriteSuccess = onWriteSuccess
+        _writeSucceeded = State(initialValue: wasPreviouslyWritten)
     }
 
     var body: some View {
@@ -36,18 +41,18 @@ struct NFCWriterControl: View {
             .disabled(!NFCSessionController.isAvailable)
 
             if NFCSessionController.isAvailable {
-                if let resultMessage {
+                if let statusMessage {
                     Label(
-                        resultMessage,
-                        systemImage: writeSucceeded
-                            ? "checkmark.circle.fill"
-                            : "exclamationmark.triangle.fill"
+                        statusMessage,
+                        systemImage: resultIsError
+                            ? "exclamationmark.triangle.fill"
+                            : "checkmark.circle.fill"
                     )
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(
-                        writeSucceeded
-                            ? TreasureTheme.teal
-                            : TreasureTheme.coralText
+                        resultIsError
+                            ? TreasureTheme.coralText
+                            : TreasureTheme.tealText
                     )
                 }
             } else {
@@ -68,10 +73,29 @@ struct NFCWriterControl: View {
         } message: {
             Text("URLや連絡先など、現在タグに入っているデータは失われます。")
         }
+        .onChange(of: payload) {
+            resultMessage = nil
+            resultIsError = false
+            writeSucceeded = wasPreviouslyWritten
+        }
+        .onChange(of: wasPreviouslyWritten) { _, isWritten in
+            if isWritten {
+                writeSucceeded = true
+            }
+        }
+    }
+
+    private var statusMessage: String? {
+        if let resultMessage {
+            return resultMessage
+        }
+        guard writeSucceeded else { return nil }
+        return "この宝のNFCタグは書き込み済みです。"
     }
 
     private func beginWriting(allowsOverwrite: Bool = false) {
         resultMessage = nil
+        resultIsError = false
 
         let controller = NFCSessionController(
             operation: .write(
@@ -85,6 +109,7 @@ struct NFCWriterControl: View {
             switch result {
             case .success:
                 writeSucceeded = true
+                resultIsError = false
                 resultMessage = "書き込みました。このタグを宝といっしょに置いてください。"
                 onWriteSuccess()
             case let .failure(error):
@@ -93,7 +118,7 @@ struct NFCWriterControl: View {
                     isConfirmingOverwrite = true
                     return
                 }
-                writeSucceeded = false
+                resultIsError = true
                 resultMessage = error.errorDescription
             }
         }

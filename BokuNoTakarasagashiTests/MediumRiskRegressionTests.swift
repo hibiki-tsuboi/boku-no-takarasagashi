@@ -213,6 +213,31 @@ final class MediumRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testNFCReadSuccessWaitsForDismissalAndCannotBeCancelled() {
+        let successResult = NFCSessionInvalidationResultResolver.resolve(
+            pendingResult: .success(()),
+            fallbackError: .cancelled
+        )
+        switch successResult {
+        case .success:
+            break
+        case let .failure(error):
+            XCTFail("読み取り成功が\(error)へ変わりました")
+        }
+
+        let cancelledResult = NFCSessionInvalidationResultResolver.resolve(
+            pendingResult: nil,
+            fallbackError: .cancelled
+        )
+        switch cancelledResult {
+        case .success:
+            XCTFail("読み取り前のキャンセルが成功扱いになりました")
+        case let .failure(error):
+            XCTAssertEqual(error, .cancelled)
+        }
+    }
+
+    @MainActor
     func testTransferRejectsEleventhStageBeforeDecodingPackage() throws {
         let stage = """
         {

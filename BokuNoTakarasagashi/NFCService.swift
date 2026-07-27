@@ -232,6 +232,8 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     private let operation: Operation
     private let completion: (Result<Void, TreasureNFCError>) -> Void
     private var session: NFCNDEFReaderSession?
+    private var completionAfterInvalidation:
+        Result<Void, TreasureNFCError>?
     private var didComplete = false
 
     init(
@@ -373,8 +375,10 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                     TreasurePayload.matches($0, expected: expectedPayload)
                 }) {
                     activeSession.alertMessage = successMessage
-                    activeSession.invalidate()
-                    self.finish(.success(()))
+                    self.finishAfterInvalidation(
+                        .success(()),
+                        session: activeSession
+                    )
                 } else {
                     activeSession.alertMessage = "これは別の宝のNFCタグみたい。ほかのタグをさがしてみよう。"
                     activeSession.restartPolling()
@@ -572,19 +576,45 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
     private func handleInvalidation(_ error: any Error) {
         guard !didComplete else { return }
 
+        let fallbackError: TreasureNFCError
         if let readerError = error as? NFCReaderError,
            readerError.code == .readerSessionInvalidationErrorUserCanceled {
-            finish(.failure(.cancelled))
+            fallbackError = .cancelled
         } else {
-            finish(.failure(.sessionFailed))
+            fallbackError = .sessionFailed
         }
+        finish(
+            NFCSessionInvalidationResultResolver.resolve(
+                pendingResult: completionAfterInvalidation,
+                fallbackError: fallbackError
+            )
+        )
+    }
+
+    private func finishAfterInvalidation(
+        _ result: Result<Void, TreasureNFCError>,
+        session: NFCNDEFReaderSession
+    ) {
+        guard !didComplete else { return }
+        completionAfterInvalidation = result
+        session.invalidate()
     }
 
     private func finish(_ result: Result<Void, TreasureNFCError>) {
         guard !didComplete else { return }
         didComplete = true
+        completionAfterInvalidation = nil
         session = nil
         completion(result)
+    }
+}
+
+enum NFCSessionInvalidationResultResolver {
+    static func resolve(
+        pendingResult: Result<Void, TreasureNFCError>?,
+        fallbackError: TreasureNFCError
+    ) -> Result<Void, TreasureNFCError> {
+        pendingResult ?? .failure(fallbackError)
     }
 }
 

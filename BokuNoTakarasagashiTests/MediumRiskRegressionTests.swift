@@ -238,6 +238,67 @@ final class MediumRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testStageEditorValidationSelectsFirstRequiredField() {
+        let firstExtraHintID = UUID()
+        let secondExtraHintID = UUID()
+
+        XCTAssertEqual(
+            StageEditorValidator.firstInvalidField(
+                hint: "   ",
+                extraHints: [
+                    (id: firstExtraHintID, text: ""),
+                ],
+                verification: .passphrase,
+                passphrase: ""
+            ),
+            .hint
+        )
+        XCTAssertEqual(
+            StageEditorValidator.firstInvalidField(
+                hint: "机の近く",
+                extraHints: [
+                    (id: firstExtraHintID, text: "木でできているよ"),
+                    (id: secondExtraHintID, text: "\n"),
+                ],
+                verification: .passphrase,
+                passphrase: ""
+            ),
+            .extraHint(secondExtraHintID)
+        )
+        XCTAssertEqual(
+            StageEditorValidator.firstInvalidField(
+                hint: "机の近く",
+                extraHints: [
+                    (id: firstExtraHintID, text: "木でできているよ"),
+                ],
+                verification: .passphrase,
+                passphrase: ""
+            ),
+            .passphrase
+        )
+        XCTAssertEqual(
+            StageEditorValidator.firstInvalidField(
+                hint: "机の近く",
+                extraHints: [
+                    (id: firstExtraHintID, text: "木でできているよ"),
+                ],
+                verification: .passphrase,
+                passphrase: "たからもの"
+            ),
+            nil
+        )
+        XCTAssertEqual(
+            StageEditorValidator.firstInvalidField(
+                hint: "机の近く",
+                extraHints: [],
+                verification: .honesty,
+                passphrase: ""
+            ),
+            nil
+        )
+    }
+
+    @MainActor
     func testTransferRejectsEleventhStageBeforeDecodingPackage() throws {
         let stage = """
         {

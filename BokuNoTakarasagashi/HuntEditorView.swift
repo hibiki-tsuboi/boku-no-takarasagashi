@@ -542,9 +542,52 @@ private struct StageRow: View {
     }
 }
 
+enum StageEditorValidationField: Hashable {
+    case hint
+    case extraHint(UUID)
+    case passphrase
+}
+
+enum StageEditorValidator {
+    static func firstInvalidField(
+        hint: String,
+        extraHints: [(id: UUID, text: String)],
+        verification: TreasureVerification,
+        passphrase: String
+    ) -> StageEditorValidationField? {
+        if !TreasureContentValidator.isValidRequiredText(
+            hint,
+            maximumLength: TreasureContentLimits.maximumHintLength
+        ) {
+            return .hint
+        }
+
+        if let invalidExtraHint = extraHints.first(where: {
+            !TreasureContentValidator.isValidRequiredText(
+                $0.text,
+                maximumLength: TreasureContentLimits.maximumExtraHintLength
+            )
+        }) {
+            return .extraHint(invalidExtraHint.id)
+        }
+
+        if verification == .passphrase,
+           !TreasureContentValidator.isValidRequiredText(
+               passphrase,
+               maximumLength: TreasureContentLimits.maximumPassphraseLength
+           ) {
+            return .passphrase
+        }
+
+        return nil
+    }
+}
+
 private struct StageEditorView: View {
     @Binding private var stage: StageDraft
     @State private var draft: StageDraft
+    @State private var validationWasRequested = false
+    @FocusState private var focusedField: StageEditorValidationField?
 
     let number: Int
     let isLast: Bool
@@ -564,15 +607,37 @@ private struct StageEditorView: View {
 
     var body: some View {
         Form {
+            if validationWasRequested, firstInvalidField != nil {
+                Section {
+                    Label(
+                        "入力していない必須項目があります",
+                        systemImage: "exclamationmark.circle.fill"
+                    )
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(TreasureTheme.coralText)
+                }
+            }
+
             Section {
-                TextEditor(text: $draft.hint)
-                    .frame(minHeight: 110)
-                    .onChange(of: draft.hint) { _, newValue in
-                        draft.hint = TreasureContentValidator.limited(
-                            newValue,
-                            maximumLength: TreasureContentLimits.maximumHintLength
+                VStack(alignment: .leading, spacing: 6) {
+                    TextEditor(text: $draft.hint)
+                        .frame(minHeight: 110)
+                        .focused($focusedField, equals: .hint)
+                        .stageValidationBorder(isVisible: hintIsInvalid)
+                        .onChange(of: draft.hint) { _, newValue in
+                            draft.hint = TreasureContentValidator.limited(
+                                newValue,
+                                maximumLength: TreasureContentLimits.maximumHintLength
+                            )
+                        }
+
+                    if hintIsInvalid {
+                        StageValidationMessage(
+                            text: "ヒントを入力してください"
                         )
                     }
+                }
+                .id(StageEditorValidationField.hint)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("写真（任意）")
@@ -620,6 +685,13 @@ private struct StageEditorView: View {
 
                         TextEditor(text: $extraHint.text)
                             .frame(minHeight: 82)
+                            .focused(
+                                $focusedField,
+                                equals: .extraHint(extraHint.id)
+                            )
+                            .stageValidationBorder(
+                                isVisible: extraHintIsInvalid(extraHint.text)
+                            )
                             .onChange(of: extraHint.text) { _, newValue in
                                 extraHint.text = TreasureContentValidator.limited(
                                     newValue,
@@ -627,6 +699,12 @@ private struct StageEditorView: View {
                                         .maximumExtraHintLength
                                 )
                             }
+
+                        if extraHintIsInvalid(extraHint.text) {
+                            StageValidationMessage(
+                                text: "おたすけヒントを入力するか、削除してください"
+                            )
+                        }
 
                         CharacterLimitStatus(
                             count: extraHint.text.count,
@@ -645,6 +723,7 @@ private struct StageEditorView: View {
                             )
                         }
                     }
+                    .id(StageEditorValidationField.extraHint(extraHint.id))
                 }
 
                 if draft.extraHints.count
@@ -713,6 +792,12 @@ private struct StageEditorView: View {
                         TextField("宝と一緒に置く合言葉", text: $draft.passphrase)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
+                            .focused($focusedField, equals: .passphrase)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 10)
+                            .stageValidationBorder(
+                                isVisible: passphraseIsInvalid
+                            )
                             .onChange(of: draft.passphrase) { _, newValue in
                                 draft.passphrase = TreasureContentValidator.limited(
                                     newValue,
@@ -721,11 +806,18 @@ private struct StageEditorView: View {
                                 )
                             }
 
+                        if passphraseIsInvalid {
+                            StageValidationMessage(
+                                text: "合言葉を入力してください"
+                            )
+                        }
+
                         CharacterLimitStatus(
                             count: draft.passphrase.count,
                             maximum: TreasureContentLimits.maximumPassphraseLength
                         )
                     }
+                    .id(StageEditorValidationField.passphrase)
                 }
 
                 if draft.verification == .qrCode && QRCodeScannerCapability.isSupported {
@@ -835,9 +927,50 @@ private struct StageEditorView: View {
     }
 
     private func finishEditing() {
-        draft.extraHints.removeAll { $0.text.trimmed.isEmpty }
+        validationWasRequested = true
+        if let firstInvalidField {
+            focusedField = firstInvalidField
+            return
+        }
+
         stage = draft
         dismiss()
+    }
+
+    private var firstInvalidField: StageEditorValidationField? {
+        StageEditorValidator.firstInvalidField(
+            hint: draft.hint,
+            extraHints: draft.extraHints.map {
+                (id: $0.id, text: $0.text)
+            },
+            verification: draft.verification,
+            passphrase: draft.passphrase
+        )
+    }
+
+    private var hintIsInvalid: Bool {
+        validationWasRequested
+            && !TreasureContentValidator.isValidRequiredText(
+                draft.hint,
+                maximumLength: TreasureContentLimits.maximumHintLength
+            )
+    }
+
+    private func extraHintIsInvalid(_ text: String) -> Bool {
+        validationWasRequested
+            && !TreasureContentValidator.isValidRequiredText(
+                text,
+                maximumLength: TreasureContentLimits.maximumExtraHintLength
+            )
+    }
+
+    private var passphraseIsInvalid: Bool {
+        validationWasRequested
+            && draft.verification == .passphrase
+            && !TreasureContentValidator.isValidRequiredText(
+                draft.passphrase,
+                maximumLength: TreasureContentLimits.maximumPassphraseLength
+            )
     }
 
     private var verificationHelp: String {
@@ -882,6 +1015,29 @@ private struct StageEditorView: View {
             case .honesty, .passphrase:
                 true
             }
+        }
+    }
+}
+
+private struct StageValidationMessage: View {
+    let text: String
+
+    var body: some View {
+        Label(text, systemImage: "exclamationmark.circle.fill")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(TreasureTheme.coralText)
+    }
+}
+
+private extension View {
+    func stageValidationBorder(isVisible: Bool) -> some View {
+        overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(
+                    isVisible ? TreasureTheme.coralText : .clear,
+                    lineWidth: 2
+                )
+                .allowsHitTesting(false)
         }
     }
 }

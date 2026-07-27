@@ -15,6 +15,7 @@ struct HuntEditorView: View {
     @State private var draft: HuntDraft
     @State private var saveError: String?
     @State private var isShowingDiscardConfirmation = false
+    @State private var titleWasEdited = false
 
     private let initialDraft: HuntDraft
 
@@ -31,13 +32,25 @@ struct HuntEditorView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("例：おうちの大冒険", text: $draft.title)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 10)
+                            .requiredFieldValidationBorder(
+                                isVisible: titleIsInvalid
+                            )
                             .onChange(of: draft.title) { _, newValue in
+                                titleWasEdited = true
                                 draft.title = TreasureContentValidator.limited(
                                     newValue,
                                     maximumLength: TreasureContentLimits
                                         .maximumHuntTitleLength
                                 )
                             }
+
+                        if titleIsInvalid {
+                            RequiredFieldValidationMessage(
+                                text: "タイトルを入力してください"
+                            )
+                        }
 
                         CharacterLimitStatus(
                             count: draft.title.count,
@@ -249,6 +262,13 @@ struct HuntEditorView: View {
             && messagesAreValid
             && stagesAreValid
             && photosAreValid
+    }
+
+    private var titleIsInvalid: Bool {
+        HuntEditorValidator.shouldShowTitleError(
+            title: draft.title,
+            titleWasEdited: titleWasEdited
+        )
     }
 
     private var totalPhotoByteCount: Int {
@@ -542,6 +562,19 @@ private struct StageRow: View {
     }
 }
 
+enum HuntEditorValidator {
+    static func shouldShowTitleError(
+        title: String,
+        titleWasEdited: Bool
+    ) -> Bool {
+        titleWasEdited
+            && !TreasureContentValidator.isValidRequiredText(
+                title,
+                maximumLength: TreasureContentLimits.maximumHuntTitleLength
+            )
+    }
+}
+
 enum StageEditorValidationField: Hashable {
     case hint
     case extraHint(UUID)
@@ -623,7 +656,9 @@ private struct StageEditorView: View {
                     TextEditor(text: $draft.hint)
                         .frame(minHeight: 110)
                         .focused($focusedField, equals: .hint)
-                        .stageValidationBorder(isVisible: hintIsInvalid)
+                        .requiredFieldValidationBorder(
+                            isVisible: hintIsInvalid
+                        )
                         .onChange(of: draft.hint) { _, newValue in
                             draft.hint = TreasureContentValidator.limited(
                                 newValue,
@@ -632,7 +667,7 @@ private struct StageEditorView: View {
                         }
 
                     if hintIsInvalid {
-                        StageValidationMessage(
+                        RequiredFieldValidationMessage(
                             text: "ヒントを入力してください"
                         )
                     }
@@ -689,7 +724,7 @@ private struct StageEditorView: View {
                                 $focusedField,
                                 equals: .extraHint(extraHint.id)
                             )
-                            .stageValidationBorder(
+                            .requiredFieldValidationBorder(
                                 isVisible: extraHintIsInvalid(extraHint.text)
                             )
                             .onChange(of: extraHint.text) { _, newValue in
@@ -701,7 +736,7 @@ private struct StageEditorView: View {
                             }
 
                         if extraHintIsInvalid(extraHint.text) {
-                            StageValidationMessage(
+                            RequiredFieldValidationMessage(
                                 text: "おたすけヒントを入力するか、削除してください"
                             )
                         }
@@ -795,7 +830,7 @@ private struct StageEditorView: View {
                             .focused($focusedField, equals: .passphrase)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 10)
-                            .stageValidationBorder(
+                            .requiredFieldValidationBorder(
                                 isVisible: passphraseIsInvalid
                             )
                             .onChange(of: draft.passphrase) { _, newValue in
@@ -807,7 +842,7 @@ private struct StageEditorView: View {
                             }
 
                         if passphraseIsInvalid {
-                            StageValidationMessage(
+                            RequiredFieldValidationMessage(
                                 text: "合言葉を入力してください"
                             )
                         }
@@ -1019,7 +1054,7 @@ private struct StageEditorView: View {
     }
 }
 
-private struct StageValidationMessage: View {
+private struct RequiredFieldValidationMessage: View {
     let text: String
 
     var body: some View {
@@ -1030,7 +1065,7 @@ private struct StageValidationMessage: View {
 }
 
 private extension View {
-    func stageValidationBorder(isVisible: Bool) -> some View {
+    func requiredFieldValidationBorder(isVisible: Bool) -> some View {
         overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(

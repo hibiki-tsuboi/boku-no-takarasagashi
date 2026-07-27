@@ -299,6 +299,28 @@ final class MediumRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testHuntTitleShowsValidationAfterItIsDeleted() {
+        XCTAssertFalse(
+            HuntEditorValidator.shouldShowTitleError(
+                title: "",
+                titleWasEdited: false
+            )
+        )
+        XCTAssertTrue(
+            HuntEditorValidator.shouldShowTitleError(
+                title: " \n",
+                titleWasEdited: true
+            )
+        )
+        XCTAssertFalse(
+            HuntEditorValidator.shouldShowTitleError(
+                title: "おうちの宝探し",
+                titleWasEdited: true
+            )
+        )
+    }
+
+    @MainActor
     func testTransferRejectsEleventhStageBeforeDecodingPackage() throws {
         let stage = """
         {

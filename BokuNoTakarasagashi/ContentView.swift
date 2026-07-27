@@ -296,13 +296,12 @@ struct ContentView: View {
             Button {
                 isCreatingHunt = true
             } label: {
-                Label("新しい宝探しをつくる", systemImage: "plus")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                Label(
+                    "新しい宝探しをつくる",
+                    systemImage: "plus.circle.fill"
+                )
             }
-            .buttonStyle(.bordered)
-            .tint(TreasureTheme.teal)
+            .buttonStyle(TreasurePrimaryButtonStyle())
         }
     }
 

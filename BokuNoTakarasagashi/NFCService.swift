@@ -485,7 +485,16 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                 guard let self else { return }
 
                 let activeSession = sessionBox.value
-                guard error == nil else {
+                if let error {
+                    if NFCExistingDataReadPolicy.errorMeansTagIsEmpty(error) {
+                        self.commitWrite(
+                            writeMessageBox.value,
+                            to: tagBox.value,
+                            session: activeSession
+                        )
+                        return
+                    }
+
                     self.fail(
                         .connectionFailed,
                         message: "タグの既存データを確認できませんでした。",
@@ -576,6 +585,16 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
         didComplete = true
         session = nil
         completion(result)
+    }
+}
+
+enum NFCExistingDataReadPolicy {
+    static func errorMeansTagIsEmpty(_ error: any Error) -> Bool {
+        let error = error as NSError
+        return error.domain == NFCErrorDomain
+            && error.code
+                == NFCReaderError.Code
+                    .ndefReaderSessionErrorZeroLengthMessage.rawValue
     }
 }
 

@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashiTests
 //
 
+import CoreNFC
 import ImageIO
 import SwiftData
 import UIKit
@@ -181,6 +182,34 @@ final class MediumRiskRegressionTests: XCTestCase {
         savedStage.verificationToken = "different-token"
 
         XCTAssertFalse(savedStage.nfcTagWasWritten)
+    }
+
+    @MainActor
+    func testEmptyNDEFTagCanProceedToWrite() {
+        let emptyTagError = NSError(
+            domain: NFCErrorDomain,
+            code: NFCReaderError.Code
+                .ndefReaderSessionErrorZeroLengthMessage.rawValue
+        )
+        let connectionLostError = NSError(
+            domain: NFCErrorDomain,
+            code: NFCReaderError.Code
+                .readerTransceiveErrorTagConnectionLost.rawValue
+        )
+        let unrelatedError = NSError(
+            domain: "BokuNoTakarasagashiTests",
+            code: emptyTagError.code
+        )
+
+        XCTAssertTrue(
+            NFCExistingDataReadPolicy.errorMeansTagIsEmpty(emptyTagError)
+        )
+        XCTAssertFalse(
+            NFCExistingDataReadPolicy.errorMeansTagIsEmpty(connectionLostError)
+        )
+        XCTAssertFalse(
+            NFCExistingDataReadPolicy.errorMeansTagIsEmpty(unrelatedError)
+        )
     }
 
     @MainActor

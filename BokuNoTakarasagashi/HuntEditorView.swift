@@ -674,6 +674,7 @@ private struct StageEditorView: View {
                         )
                         .foregroundStyle(TreasureTheme.coralText)
                     }
+                    .listRowSeparator(.hidden, edges: .bottom)
 
                     Label(
                         "この端末では\(draft.verification.title)を使えません。保存するには発見方法を変更してください。",
@@ -704,6 +705,7 @@ private struct StageEditorView: View {
                         }
                     }
                     .pickerStyle(.navigationLink)
+                    .listRowSeparator(.hidden, edges: .bottom)
                 }
 
                 if draft.verification == .passphrase {

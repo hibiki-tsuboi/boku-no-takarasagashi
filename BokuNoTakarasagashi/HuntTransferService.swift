@@ -135,11 +135,14 @@ enum HuntTransferService {
             ) else {
                 throw HuntTransferError.invalidContent
             }
+            let extraHints = transferredStage.availableExtraHints
 
             let stage = TreasureStage(
                 orderIndex: index,
                 hint: transferredStage.hint,
-                extraHint: transferredStage.extraHint,
+                extraHint: extraHints[safe: 0],
+                extraHint2: extraHints[safe: 1],
+                extraHint3: extraHints[safe: 2],
                 hintImageData: transferredStage.hintImageData,
                 discoveryMessage: transferredStage.discoveryMessage,
                 verification: verification,
@@ -227,15 +230,23 @@ extension HuntTransferPackage {
             openingMessage: hunt.openingMessage,
             completionMessage: hunt.completionMessage,
             stages: hunt.sortedStages.map { stage in
-                Stage(
+                let extraHints = stage.availableExtraHints
+                return Stage(
                     hint: stage.hint,
-                    extraHint: stage.extraHint,
+                    extraHint: extraHints.first,
                     hintImageData: stage.hintImageData,
                     discoveryMessage: stage.discoveryMessage,
                     verificationRawValue: stage.verification.rawValue,
-                    passphrase: stage.passphrase
+                    passphrase: stage.passphrase,
+                    extraHints: extraHints
                 )
             }
         )
+    }
+}
+
+private extension Collection {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

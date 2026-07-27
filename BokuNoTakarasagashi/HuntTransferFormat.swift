@@ -9,10 +9,42 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
     struct Stage: Codable, Equatable, Sendable {
         let hint: String
         let extraHint: String?
+        let extraHints: [String]?
         let hintImageData: Data?
         let discoveryMessage: String
         let verificationRawValue: String
         let passphrase: String
+
+        init(
+            hint: String,
+            extraHint: String?,
+            hintImageData: Data?,
+            discoveryMessage: String,
+            verificationRawValue: String,
+            passphrase: String,
+            extraHints: [String]? = nil
+        ) {
+            self.hint = hint
+            self.extraHint = extraHint
+            self.extraHints = extraHints
+            self.hintImageData = hintImageData
+            self.discoveryMessage = discoveryMessage
+            self.verificationRawValue = verificationRawValue
+            self.passphrase = passphrase
+        }
+
+        var availableExtraHints: [String] {
+            if let extraHints {
+                return extraHints
+            }
+            guard let extraHint,
+                  !extraHint.trimmingCharacters(
+                      in: .whitespacesAndNewlines
+                  ).isEmpty else {
+                return []
+            }
+            return [extraHint]
+        }
     }
 
     static let formatIdentifier = "bokunotakarasagashi-hunt"
@@ -99,6 +131,14 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
                       stage.extraHint ?? "",
                       maximumLength: TreasureContentLimits.maximumExtraHintLength
                   ),
+                  stage.availableExtraHints.count
+                      <= TreasureContentLimits.maximumExtraHintCount,
+                  stage.availableExtraHints.allSatisfy({
+                      TreasureContentValidator.isValidRequiredText(
+                          $0,
+                          maximumLength: TreasureContentLimits.maximumExtraHintLength
+                      )
+                  }),
                   TreasureContentValidator.isWithinLimit(
                       stage.discoveryMessage,
                       maximumLength: TreasureContentLimits.maximumDiscoveryMessageLength

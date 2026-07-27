@@ -289,8 +289,11 @@ private struct PreparationStageCard: View {
                         .padding(.top, 5)
                 }
 
-                if let extraHint = stage.availableExtraHint {
-                    Text("おたすけヒント")
+                ForEach(
+                    Array(stage.availableExtraHints.enumerated()),
+                    id: \.offset
+                ) { index, extraHint in
+                    Text("おたすけヒント \(index + 1)")
                         .font(.caption.bold())
                         .foregroundStyle(TreasureTheme.goldText)
                         .padding(.top, 5)

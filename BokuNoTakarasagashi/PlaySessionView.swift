@@ -123,7 +123,7 @@ struct PlaySessionView: View {
             }
         }
         .confirmationDialog(
-            "おたすけヒントを見る？",
+            extraHintConfirmationTitle,
             isPresented: $isShowingExtraHintConfirmation,
             titleVisibility: .visible
         ) {
@@ -249,35 +249,71 @@ struct PlaySessionView: View {
 
     @ViewBuilder
     private func extraHintControls(for stage: TreasureStage) -> some View {
-        if let extraHint = stage.availableExtraHint {
-            if hunt.revealedExtraHintStageID == stage.id {
-                HuntExtraHintCard(
-                    extraHint: extraHint,
-                    speechController: speechController
-                )
-                .transition(
-                    reduceMotion
-                        ? .opacity
-                        : .opacity.combined(with: .scale(scale: 0.96))
-                )
-            } else {
-                VStack(spacing: 8) {
-                    Button {
-                        isShowingExtraHintConfirmation = true
-                    } label: {
-                        Label("もう少しヒントを見る", systemImage: "lightbulb")
-                            .font(.headline)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(TreasureTheme.teal)
+        let extraHints = stage.availableExtraHints
+        let revealedCount = min(
+            hunt.revealedExtraHintCount(for: stage.id),
+            extraHints.count
+        )
 
-                    Text("分からないときに使ってね")
-                        .font(.caption)
-                        .foregroundStyle(TreasureTheme.secondaryText)
+        if !extraHints.isEmpty {
+            VStack(spacing: 12) {
+                ForEach(
+                    Array(extraHints.prefix(revealedCount).enumerated()),
+                    id: \.offset
+                ) { index, extraHint in
+                    HuntExtraHintCard(
+                        extraHint: extraHint,
+                        number: index + 1,
+                        totalCount: extraHints.count,
+                        speechController: speechController
+                    )
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .opacity.combined(
+                                with: .scale(scale: 0.96)
+                            )
+                    )
                 }
-                .treasureCompactCard()
+
+                if revealedCount < extraHints.count {
+                    VStack(spacing: 8) {
+                        Button {
+                            isShowingExtraHintConfirmation = true
+                        } label: {
+                            Label(
+                                revealedCount == 0
+                                    ? "もう少しヒントを見る"
+                                    : "もうひとつヒントを見る",
+                                systemImage: "lightbulb"
+                            )
+                            .font(.headline)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(TreasureTheme.teal)
+
+                        Text("分からないときに使ってね")
+                            .font(.caption)
+                            .foregroundStyle(
+                                TreasureTheme.secondaryText
+                            )
+                    }
+                    .treasureCompactCard()
+                }
             }
         }
+    }
+
+    private var extraHintConfirmationTitle: String {
+        guard let stage = currentStage else {
+            return "おたすけヒントを見る？"
+        }
+        let totalCount = stage.availableExtraHints.count
+        let nextNumber = hunt.revealedExtraHintCount(for: stage.id) + 1
+        guard totalCount > 1 else {
+            return "おたすけヒントを見る？"
+        }
+        return "おたすけヒント \(nextNumber)を見る？"
     }
 
     private var progressHeader: some View {
@@ -569,17 +605,21 @@ struct PlaySessionView: View {
     }
 
     private func revealExtraHint() {
-        guard let stage = currentStage,
-              stage.availableExtraHint != nil else {
+        guard let stage = currentStage else {
             return
         }
+        let availableCount = stage.availableExtraHints.count
+        guard availableCount > 0 else { return }
 
         withAnimation(
             reduceMotion
                 ? nil
                 : .spring(response: 0.38, dampingFraction: 0.82)
         ) {
-            hunt.revealExtraHint(for: stage.id)
+            hunt.revealNextExtraHint(
+                for: stage.id,
+                availableCount: availableCount
+            )
         }
         _ = saveProgress()
     }

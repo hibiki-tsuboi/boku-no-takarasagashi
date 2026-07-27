@@ -54,6 +54,7 @@ nonisolated enum TreasureContentLimits {
     static let maximumStageCount = 10
     static let maximumHintLength = 1_000
     static let maximumExtraHintLength = 1_000
+    static let maximumExtraHintCount = 3
     static let maximumDiscoveryMessageLength = 1_000
     static let maximumPassphraseLength = 200
     static let maximumVerificationIdentifierLength = 40
@@ -145,6 +146,7 @@ final class TreasureHunt {
     var playStateRawValue: String
     var isChildModeLocked: Bool
     var revealedExtraHintStageID: UUID?
+    var revealedExtraHintCount: Int?
     var extraHintsUsedCount: Int?
 
     @Relationship(deleteRule: .cascade, inverse: \TreasureStage.hunt)
@@ -165,6 +167,7 @@ final class TreasureHunt {
         playStateRawValue = HuntPlayState.ready.rawValue
         isChildModeLocked = false
         revealedExtraHintStageID = nil
+        revealedExtraHintCount = nil
         extraHintsUsedCount = 0
         stages = []
     }
@@ -189,6 +192,7 @@ final class TreasureHunt {
         playState = .inProgress
         isChildModeLocked = true
         revealedExtraHintStageID = nil
+        revealedExtraHintCount = nil
         extraHintsUsedCount = 0
         updatedAt = .now
     }
@@ -198,6 +202,7 @@ final class TreasureHunt {
         playState = .ready
         isChildModeLocked = false
         revealedExtraHintStageID = nil
+        revealedExtraHintCount = nil
         extraHintsUsedCount = 0
         updatedAt = .now
     }
@@ -205,12 +210,24 @@ final class TreasureHunt {
     func advanceToNextStage() {
         currentStageIndex += 1
         revealedExtraHintStageID = nil
+        revealedExtraHintCount = nil
         updatedAt = .now
     }
 
-    func revealExtraHint(for stageID: UUID) {
-        guard revealedExtraHintStageID != stageID else { return }
+    func revealedExtraHintCount(for stageID: UUID) -> Int {
+        guard revealedExtraHintStageID == stageID else { return 0 }
+        return max(revealedExtraHintCount ?? 1, 0)
+    }
+
+    func revealNextExtraHint(
+        for stageID: UUID,
+        availableCount: Int
+    ) {
+        let currentCount = revealedExtraHintCount(for: stageID)
+        guard currentCount < availableCount else { return }
+
         revealedExtraHintStageID = stageID
+        revealedExtraHintCount = currentCount + 1
         extraHintsUsedCount = usedExtraHintCount + 1
         updatedAt = .now
     }
@@ -218,6 +235,7 @@ final class TreasureHunt {
     func completeGame() {
         playState = .completed
         revealedExtraHintStageID = nil
+        revealedExtraHintCount = nil
         updatedAt = .now
     }
 
@@ -233,6 +251,8 @@ final class TreasureStage {
     var orderIndex: Int
     var hint: String
     var extraHint: String?
+    var extraHint2: String?
+    var extraHint3: String?
     @Attribute(.externalStorage) var hintImageData: Data?
     var discoveryMessage: String
     var verificationRawValue: String
@@ -244,6 +264,8 @@ final class TreasureStage {
         orderIndex: Int,
         hint: String,
         extraHint: String? = nil,
+        extraHint2: String? = nil,
+        extraHint3: String? = nil,
         hintImageData: Data? = nil,
         discoveryMessage: String,
         verification: TreasureVerification,
@@ -255,6 +277,8 @@ final class TreasureStage {
         self.orderIndex = orderIndex
         self.hint = hint
         self.extraHint = extraHint
+        self.extraHint2 = extraHint2
+        self.extraHint3 = extraHint3
         self.hintImageData = hintImageData
         self.discoveryMessage = discoveryMessage
         verificationRawValue = verification.rawValue
@@ -276,16 +300,12 @@ final class TreasureStage {
         TreasurePayload.make(token: verificationToken ?? id.uuidString)
     }
 
-    var availableExtraHint: String? {
-        guard let extraHint else {
-            return nil
+    var availableExtraHints: [String] {
+        [extraHint, extraHint2, extraHint3].compactMap { hint in
+            guard let hint else { return nil }
+            let value = hint.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.isEmpty ? nil : value
         }
-
-        let value = extraHint.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty else {
-            return nil
-        }
-        return value
     }
 }
 

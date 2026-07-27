@@ -14,7 +14,7 @@ struct HuntPreviewView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var stageIndex = 0
-    @State private var revealedExtraHintStageIDs: Set<UUID> = []
+    @State private var revealedExtraHintCounts: [UUID: Int] = [:]
     @State private var isShowingCompletion = false
     @State private var isShowingDiscovery = false
     @State private var isShowingQRCodeScanner = false
@@ -174,41 +174,59 @@ struct HuntPreviewView: View {
 
     @ViewBuilder
     private func extraHintPreview(for stage: TreasureStage) -> some View {
-        if let extraHint = stage.availableExtraHint {
-            if revealedExtraHintStageIDs.contains(stage.id) {
-                VStack(spacing: 8) {
+        let extraHints = stage.availableExtraHints
+        let revealedCount = min(
+            revealedExtraHintCounts[stage.id] ?? 0,
+            extraHints.count
+        )
+
+        if !extraHints.isEmpty {
+            VStack(spacing: 12) {
+                ForEach(
+                    Array(extraHints.prefix(revealedCount).enumerated()),
+                    id: \.offset
+                ) { index, extraHint in
                     HuntExtraHintCard(
                         extraHint: extraHint,
+                        number: index + 1,
+                        totalCount: extraHints.count,
                         speechController: speechController
                     )
-
-                    Button {
-                        speechController.stop()
-                        revealedExtraHintStageIDs.remove(stage.id)
-                    } label: {
-                        Label(
-                            "おたすけヒントを隠す",
-                            systemImage: "eye.slash"
-                        )
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(TreasureTheme.ink)
                 }
-            } else {
-                VStack(spacing: 8) {
-                    Button {
-                        revealedExtraHintStageIDs.insert(stage.id)
-                    } label: {
-                        Label(
-                            "もう少しヒントを見る",
-                            systemImage: "lightbulb"
-                        )
-                        .font(.headline)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(TreasureTheme.teal)
 
-                    Text("本番と同じように、おたすけヒントを確認できます")
+                VStack(spacing: 8) {
+                    if revealedCount < extraHints.count {
+                        Button {
+                            revealedExtraHintCounts[stage.id] =
+                                revealedCount + 1
+                        } label: {
+                            Label(
+                                revealedCount == 0
+                                    ? "もう少しヒントを見る"
+                                    : "もうひとつヒントを見る",
+                                systemImage: "lightbulb"
+                            )
+                            .font(.headline)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(TreasureTheme.teal)
+                    }
+
+                    if revealedCount > 0 {
+                        Button {
+                            speechController.stop()
+                            revealedExtraHintCounts[stage.id] = 0
+                        } label: {
+                            Label(
+                                "おたすけヒントを隠す",
+                                systemImage: "eye.slash"
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(TreasureTheme.ink)
+                    }
+
+                    Text("本番と同じように、おたすけヒントを順番に確認できます")
                         .font(.caption)
                         .foregroundStyle(TreasureTheme.secondaryText)
                 }

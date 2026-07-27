@@ -58,12 +58,14 @@ struct HuntHintCard: View {
 
 struct HuntExtraHintCard: View {
     let extraHint: String
+    let number: Int
+    let totalCount: Int
 
     @ObservedObject var speechController: HintSpeechController
 
     var body: some View {
         VStack(spacing: 12) {
-            Label("おたすけヒント", systemImage: "lightbulb.fill")
+            Label(title, systemImage: "lightbulb.fill")
                 .font(.headline)
                 .foregroundStyle(TreasureTheme.goldText)
 
@@ -72,7 +74,7 @@ struct HuntExtraHintCard: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(TreasureTheme.ink)
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel("おたすけヒント、\(extraHint)")
+                .accessibilityLabel("\(title)、\(extraHint)")
 
             HintSpeechButton(
                 controller: speechController,
@@ -88,5 +90,10 @@ struct HuntExtraHintCard: View {
             RoundedRectangle(cornerRadius: 18)
                 .stroke(TreasureTheme.gold.opacity(0.45), lineWidth: 1.5)
         }
+    }
+
+    private var title: String {
+        guard totalCount > 1 else { return "おたすけヒント" }
+        return "おたすけヒント \(number) / \(totalCount)"
     }
 }

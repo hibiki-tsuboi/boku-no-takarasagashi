@@ -211,10 +211,15 @@ struct HuntEditorView: View {
                     stage.hint,
                     maximumLength: TreasureContentLimits.maximumHintLength
                 )
-                    && TreasureContentValidator.isWithinLimit(
-                        stage.extraHint,
-                        maximumLength: TreasureContentLimits.maximumExtraHintLength
-                    )
+                    && stage.extraHints.count
+                        <= TreasureContentLimits.maximumExtraHintCount
+                    && stage.extraHints.allSatisfy { extraHint in
+                        TreasureContentValidator.isValidRequiredText(
+                            extraHint.text,
+                            maximumLength: TreasureContentLimits
+                                .maximumExtraHintLength
+                        )
+                    }
                     && TreasureContentValidator.isWithinLimit(
                         stage.discoveryMessage,
                         maximumLength: TreasureContentLimits.maximumDiscoveryMessageLength
@@ -302,6 +307,7 @@ struct HuntEditorView: View {
         destination.playState = .ready
         destination.isChildModeLocked = false
         destination.revealedExtraHintStageID = nil
+        destination.revealedExtraHintCount = nil
         destination.extraHintsUsedCount = 0
         destination.updatedAt = .now
 
@@ -310,12 +316,13 @@ struct HuntEditorView: View {
         previousStages.forEach(modelContext.delete)
 
         for (index, stageDraft) in draft.stages.enumerated() {
+            let extraHints = stageDraft.availableExtraHints
             let stage = TreasureStage(
                 orderIndex: index,
                 hint: stageDraft.hint.trimmed,
-                extraHint: stageDraft.extraHint.trimmed.isEmpty
-                    ? nil
-                    : stageDraft.extraHint.trimmed,
+                extraHint: extraHints.first,
+                extraHint2: extraHints.dropFirst().first,
+                extraHint3: extraHints.dropFirst(2).first,
                 hintImageData: stageDraft.hintImageData,
                 discoveryMessage: stageDraft.discoveryMessage.trimmed,
                 verification: stageDraft.verification,
@@ -359,7 +366,7 @@ private struct HuntDraft: Equatable {
             stages = template.stages.map { stage in
                 StageDraft(
                     hint: stage.hint,
-                    extraHint: stage.extraHint,
+                    extraHints: [stage.extraHint],
                     discoveryMessage: stage.discoveryMessage
                 )
             }
@@ -372,7 +379,7 @@ private struct HuntDraft: Equatable {
 private struct StageDraft: Identifiable, Equatable {
     let id: UUID
     var hint: String
-    var extraHint: String
+    var extraHints: [ExtraHintDraft]
     var hintImageData: Data?
     var discoveryMessage: String
     var verification: TreasureVerification
@@ -382,7 +389,7 @@ private struct StageDraft: Identifiable, Equatable {
     init(
         id: UUID = UUID(),
         hint: String = "",
-        extraHint: String = "",
+        extraHints: [String] = [],
         hintImageData: Data? = nil,
         discoveryMessage: String = "やったね！宝を見つけた！",
         verification: TreasureVerification = .honesty,
@@ -391,7 +398,9 @@ private struct StageDraft: Identifiable, Equatable {
     ) {
         self.id = id
         self.hint = hint
-        self.extraHint = extraHint
+        self.extraHints = extraHints.map { hint in
+            ExtraHintDraft(text: hint)
+        }
         self.hintImageData = hintImageData
         self.discoveryMessage = discoveryMessage
         self.verification = verification
@@ -402,7 +411,9 @@ private struct StageDraft: Identifiable, Equatable {
     init(stage: TreasureStage) {
         id = stage.id
         hint = stage.hint
-        extraHint = stage.extraHint ?? ""
+        extraHints = stage.availableExtraHints.map { hint in
+            ExtraHintDraft(text: hint)
+        }
         hintImageData = stage.hintImageData
         discoveryMessage = stage.discoveryMessage
         verification = stage.verification
@@ -412,6 +423,22 @@ private struct StageDraft: Identifiable, Equatable {
 
     var verificationPayload: String {
         TreasurePayload.make(token: verificationToken)
+    }
+
+    var availableExtraHints: [String] {
+        extraHints
+            .map(\.text.trimmed)
+            .filter { !$0.isEmpty }
+    }
+}
+
+private struct ExtraHintDraft: Identifiable, Equatable {
+    let id: UUID
+    var text: String
+
+    init(id: UUID = UUID(), text: String = "") {
+        self.id = id
+        self.text = text
     }
 }
 
@@ -523,24 +550,63 @@ private struct StageEditorView: View {
             }
 
             Section {
-                TextEditor(text: $draft.extraHint)
-                    .frame(minHeight: 82)
-                    .onChange(of: draft.extraHint) { _, newValue in
-                        draft.extraHint = TreasureContentValidator.limited(
-                            newValue,
-                            maximumLength: TreasureContentLimits.maximumExtraHintLength
+                ForEach($draft.extraHints) { $extraHint in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(
+                                "おたすけヒント "
+                                    + "\(extraHintNumber(for: extraHint.id))"
+                            )
+                            .font(.subheadline.weight(.semibold))
+
+                            Spacer()
+
+                            Button(role: .destructive) {
+                                removeExtraHint(extraHint.id)
+                            } label: {
+                                Label("削除", systemImage: "trash")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(
+                                "おたすけヒント "
+                                    + "\(extraHintNumber(for: extraHint.id))を削除"
+                            )
+                        }
+
+                        TextEditor(text: $extraHint.text)
+                            .frame(minHeight: 82)
+                            .onChange(of: extraHint.text) { _, newValue in
+                                extraHint.text = TreasureContentValidator.limited(
+                                    newValue,
+                                    maximumLength: TreasureContentLimits
+                                        .maximumExtraHintLength
+                                )
+                            }
+
+                        CharacterLimitStatus(
+                            count: extraHint.text.count,
+                            maximum: TreasureContentLimits.maximumExtraHintLength
                         )
                     }
+                }
+
+                if draft.extraHints.count
+                    < TreasureContentLimits.maximumExtraHintCount {
+                    Button(action: addExtraHint) {
+                        Label(
+                            "おたすけヒントを追加",
+                            systemImage: "plus.circle.fill"
+                        )
+                    }
+                }
             } header: {
                 Text("おたすけヒント（任意）")
             } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("通常のヒントで難しいときだけ、さがす人が自分で開けます。空欄なら表示されません。")
-                    CharacterLimitStatus(
-                        count: draft.extraHint.count,
-                        maximum: TreasureContentLimits.maximumExtraHintLength
-                    )
-                }
+                Text(
+                    "通常のヒントで難しいときに、上から順番に1つずつ開きます"
+                        + "（最大\(TreasureContentLimits.maximumExtraHintCount)個）。"
+                )
             }
 
             Section {
@@ -664,8 +730,7 @@ private struct StageEditorView: View {
 
             ToolbarItem(placement: .confirmationAction) {
                 Button("入力完了") {
-                    stage = draft
-                    dismiss()
+                    finishEditing()
                 }
                 .fontWeight(.semibold)
             }
@@ -681,6 +746,33 @@ private struct StageEditorView: View {
                 .background(.regularMaterial)
         }
         .tint(TreasureTheme.teal)
+    }
+
+    private func extraHintNumber(for id: UUID) -> Int {
+        guard let index = draft.extraHints.firstIndex(
+            where: { $0.id == id }
+        ) else {
+            return 1
+        }
+        return index + 1
+    }
+
+    private func addExtraHint() {
+        guard draft.extraHints.count
+            < TreasureContentLimits.maximumExtraHintCount else {
+            return
+        }
+        draft.extraHints.append(ExtraHintDraft())
+    }
+
+    private func removeExtraHint(_ id: UUID) {
+        draft.extraHints.removeAll { $0.id == id }
+    }
+
+    private func finishEditing() {
+        draft.extraHints.removeAll { $0.text.trimmed.isEmpty }
+        stage = draft
+        dismiss()
     }
 
     private var verificationHelp: String {

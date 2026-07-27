@@ -21,7 +21,10 @@ final class MediumRiskRegressionTests: XCTestCase {
 
         hunt.startNewGame()
         hunt.currentStageIndex = 2
-        hunt.revealExtraHint(for: revealedStageID)
+        hunt.revealNextExtraHint(
+            for: revealedStageID,
+            availableCount: 3
+        )
         XCTAssertTrue(hunt.isChildModeLocked)
 
         hunt.cancelGame()
@@ -30,7 +33,44 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertEqual(hunt.currentStageIndex, 0)
         XCTAssertFalse(hunt.isChildModeLocked)
         XCTAssertNil(hunt.revealedExtraHintStageID)
+        XCTAssertNil(hunt.revealedExtraHintCount)
         XCTAssertEqual(hunt.usedExtraHintCount, 0)
+    }
+
+    @MainActor
+    func testExtraHintsRevealOneAtATimeAndStopAtAvailableCount() {
+        let hunt = TreasureHunt(
+            title: "おたすけヒントテスト",
+            openingMessage: "",
+            completionMessage: ""
+        )
+        let stageID = UUID()
+
+        hunt.startNewGame()
+
+        for expectedCount in 1...3 {
+            hunt.revealNextExtraHint(
+                for: stageID,
+                availableCount: 3
+            )
+            XCTAssertEqual(
+                hunt.revealedExtraHintCount(for: stageID),
+                expectedCount
+            )
+            XCTAssertEqual(hunt.usedExtraHintCount, expectedCount)
+        }
+
+        hunt.revealNextExtraHint(
+            for: stageID,
+            availableCount: 3
+        )
+
+        XCTAssertEqual(hunt.revealedExtraHintCount(for: stageID), 3)
+        XCTAssertEqual(hunt.usedExtraHintCount, 3)
+
+        hunt.advanceToNextStage()
+
+        XCTAssertEqual(hunt.revealedExtraHintCount(for: stageID), 0)
     }
 
     @MainActor
@@ -155,6 +195,126 @@ final class MediumRiskRegressionTests: XCTestCase {
         )
 
         XCTAssertEqual(decoded, package)
+    }
+
+    @MainActor
+    func testTransferRoundTripsThreeExtraHints() throws {
+        let hints = ["少しだけ具体的", "場所の範囲", "答えに近い手がかり"]
+        let package = HuntTransferPackage(
+            title: "複数ヒント",
+            openingMessage: "開始",
+            completionMessage: "完了",
+            stages: [
+                .init(
+                    hint: "通常ヒント",
+                    extraHint: hints.first,
+                    hintImageData: nil,
+                    discoveryMessage: "発見",
+                    verificationRawValue: TreasureVerification.honesty.rawValue,
+                    passphrase: "",
+                    extraHints: hints
+                ),
+            ]
+        )
+
+        let decoded = try HuntTransferPackage.decode(
+            from: package.encodedData()
+        )
+
+        XCTAssertEqual(decoded.stages[0].availableExtraHints, hints)
+    }
+
+    @MainActor
+    func testTransferImportsLegacySingleExtraHint() throws {
+        let json = """
+        {
+          "completionMessage": "完了",
+          "format": "\(HuntTransferPackage.formatIdentifier)",
+          "openingMessage": "開始",
+          "stages": [{
+            "discoveryMessage": "発見",
+            "extraHint": "以前のおたすけヒント",
+            "hint": "通常ヒント",
+            "passphrase": "",
+            "verificationRawValue": "honesty"
+          }],
+          "title": "以前の共有ファイル",
+          "version": \(HuntTransferPackage.currentVersion)
+        }
+        """
+
+        let decoded = try HuntTransferPackage.decode(
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(
+            decoded.stages[0].availableExtraHints,
+            ["以前のおたすけヒント"]
+        )
+    }
+
+    @MainActor
+    func testTransferRejectsFourthExtraHint() {
+        let package = HuntTransferPackage(
+            title: "多すぎるヒント",
+            openingMessage: "開始",
+            completionMessage: "完了",
+            stages: [
+                .init(
+                    hint: "通常ヒント",
+                    extraHint: "1",
+                    hintImageData: nil,
+                    discoveryMessage: "発見",
+                    verificationRawValue: TreasureVerification.honesty.rawValue,
+                    passphrase: "",
+                    extraHints: ["1", "2", "3", "4"]
+                ),
+            ]
+        )
+
+        XCTAssertThrowsError(try package.validate())
+    }
+
+    @MainActor
+    func testThreeExtraHintsPersistThroughSwiftData() throws {
+        let schema = Schema([
+            TreasureHunt.self,
+            TreasureStage.self,
+            AdventureRecord.self,
+        ])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true
+        )
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(container)
+        let stage = TreasureStage(
+            orderIndex: 0,
+            hint: "通常ヒント",
+            extraHint: "おたすけ1",
+            extraHint2: "おたすけ2",
+            extraHint3: "おたすけ3",
+            discoveryMessage: "発見",
+            verification: .honesty,
+            passphrase: ""
+        )
+        context.insert(stage)
+        try context.save()
+
+        let verificationContext = ModelContext(container)
+        let savedStage = try XCTUnwrap(
+            verificationContext.fetch(
+                FetchDescriptor<TreasureStage>()
+            ).first
+        )
+
+        XCTAssertEqual(
+            savedStage.availableExtraHints,
+            ["おたすけ1", "おたすけ2", "おたすけ3"]
+        )
     }
 
     @MainActor

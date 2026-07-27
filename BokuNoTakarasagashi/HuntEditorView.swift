@@ -14,10 +14,15 @@ struct HuntEditorView: View {
 
     @State private var draft: HuntDraft
     @State private var saveError: String?
+    @State private var isShowingDiscardConfirmation = false
+
+    private let initialDraft: HuntDraft
 
     init(hunt: TreasureHunt?, template: HuntTemplate? = nil) {
         self.hunt = hunt
-        _draft = State(initialValue: HuntDraft(hunt: hunt, template: template))
+        let initialDraft = HuntDraft(hunt: hunt, template: template)
+        self.initialDraft = initialDraft
+        _draft = State(initialValue: initialDraft)
     }
 
     var body: some View {
@@ -155,7 +160,7 @@ struct HuntEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") {
-                        dismiss()
+                        close()
                     }
                 }
 
@@ -170,8 +175,21 @@ struct HuntEditorView: View {
             } message: {
                 Text(saveError ?? "もう一度ためしてください。")
             }
+            .confirmationDialog(
+                "変更を破棄しますか？",
+                isPresented: $isShowingDiscardConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("変更を破棄", role: .destructive) {
+                    dismiss()
+                }
+                Button("編集を続ける", role: .cancel) {}
+            } message: {
+                Text("まだ保存されていない変更があります。")
+            }
         }
         .tint(TreasureTheme.teal)
+        .interactiveDismissDisabled(hasUnsavedChanges)
     }
 
     private var canSave: Bool {
@@ -230,6 +248,10 @@ struct HuntEditorView: View {
         }
     }
 
+    private var hasUnsavedChanges: Bool {
+        draft != initialDraft
+    }
+
     private var saveErrorIsPresented: Binding<Bool> {
         Binding(
             get: { saveError != nil },
@@ -247,6 +269,15 @@ struct HuntEditorView: View {
 
     private func moveStages(from source: IndexSet, to destination: Int) {
         draft.stages.move(fromOffsets: source, toOffset: destination)
+    }
+
+    private func close() {
+        guard hasUnsavedChanges else {
+            dismiss()
+            return
+        }
+
+        isShowingDiscardConfirmation = true
     }
 
     private func save() {
@@ -306,7 +337,7 @@ struct HuntEditorView: View {
     }
 }
 
-private struct HuntDraft {
+private struct HuntDraft: Equatable {
     var title: String
     var openingMessage: String
     var completionMessage: String
@@ -338,7 +369,7 @@ private struct HuntDraft {
     }
 }
 
-private struct StageDraft: Identifiable {
+private struct StageDraft: Identifiable, Equatable {
     let id: UUID
     var hint: String
     var extraHint: String
@@ -441,18 +472,32 @@ private struct StageRow: View {
 }
 
 private struct StageEditorView: View {
-    @Binding var stage: StageDraft
+    @Binding private var stage: StageDraft
+    @State private var draft: StageDraft
 
     let number: Int
     let isLast: Bool
 
+    @Environment(\.dismiss) private var dismiss
+
+    init(
+        stage: Binding<StageDraft>,
+        number: Int,
+        isLast: Bool
+    ) {
+        _stage = stage
+        _draft = State(initialValue: stage.wrappedValue)
+        self.number = number
+        self.isLast = isLast
+    }
+
     var body: some View {
         Form {
             Section {
-                TextEditor(text: $stage.hint)
+                TextEditor(text: $draft.hint)
                     .frame(minHeight: 110)
-                    .onChange(of: stage.hint) { _, newValue in
-                        stage.hint = TreasureContentValidator.limited(
+                    .onChange(of: draft.hint) { _, newValue in
+                        draft.hint = TreasureContentValidator.limited(
                             newValue,
                             maximumLength: TreasureContentLimits.maximumHintLength
                         )
@@ -463,17 +508,17 @@ private struct StageEditorView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("隠し場所を直接言わず、子どもが考えられる言葉にします。")
                     CharacterLimitStatus(
-                        count: stage.hint.count,
+                        count: draft.hint.count,
                         maximum: TreasureContentLimits.maximumHintLength
                     )
                 }
             }
 
             Section {
-                TextEditor(text: $stage.extraHint)
+                TextEditor(text: $draft.extraHint)
                     .frame(minHeight: 82)
-                    .onChange(of: stage.extraHint) { _, newValue in
-                        stage.extraHint = TreasureContentValidator.limited(
+                    .onChange(of: draft.extraHint) { _, newValue in
+                        draft.extraHint = TreasureContentValidator.limited(
                             newValue,
                             maximumLength: TreasureContentLimits.maximumExtraHintLength
                         )
@@ -484,14 +529,14 @@ private struct StageEditorView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("通常のヒントで難しいときだけ、さがす人が自分で開けます。空欄なら表示されません。")
                     CharacterLimitStatus(
-                        count: stage.extraHint.count,
+                        count: draft.extraHint.count,
                         maximum: TreasureContentLimits.maximumExtraHintLength
                     )
                 }
             }
 
             Section {
-                HintPhotoEditor(imageData: $stage.hintImageData)
+                HintPhotoEditor(imageData: $draft.hintImageData)
             } header: {
                 Text("写真ヒント（任意）")
             } footer: {
@@ -502,35 +547,35 @@ private struct StageEditorView: View {
                 if verificationIsUnavailable {
                     LabeledContent("発見方法") {
                         Label(
-                            "\(stage.verification.title)（利用不可）",
-                            systemImage: stage.verification.systemImage
+                            "\(draft.verification.title)（利用不可）",
+                            systemImage: draft.verification.systemImage
                         )
                         .foregroundStyle(TreasureTheme.coralText)
                     }
 
                     Label(
-                        "この端末では\(stage.verification.title)を使えません。保存するには発見方法を変更してください。",
+                        "この端末では\(draft.verification.title)を使えません。保存するには発見方法を変更してください。",
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .font(.footnote)
                     .foregroundStyle(TreasureTheme.coralText)
 
                     if QRCodeScannerCapability.isSupported,
-                       stage.verification != .qrCode {
+                       draft.verification != .qrCode {
                         Button {
-                            stage.verification = .qrCode
+                            draft.verification = .qrCode
                         } label: {
                             Label("QRコードに変更", systemImage: "qrcode")
                         }
                     }
 
                     Button {
-                        stage.verification = .honesty
+                        draft.verification = .honesty
                     } label: {
                         Label("「みつけた！」に変更", systemImage: "hand.thumbsup.fill")
                     }
                 } else {
-                    Picker("発見方法", selection: $stage.verification) {
+                    Picker("発見方法", selection: $draft.verification) {
                         ForEach(availableVerifications) { verification in
                             Label(verification.title, systemImage: verification.systemImage)
                                 .tag(verification)
@@ -539,13 +584,13 @@ private struct StageEditorView: View {
                     .pickerStyle(.navigationLink)
                 }
 
-                if stage.verification == .passphrase {
+                if draft.verification == .passphrase {
                     VStack(alignment: .leading, spacing: 6) {
-                        TextField("宝と一緒に置く合言葉", text: $stage.passphrase)
+                        TextField("宝と一緒に置く合言葉", text: $draft.passphrase)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                            .onChange(of: stage.passphrase) { _, newValue in
-                                stage.passphrase = TreasureContentValidator.limited(
+                            .onChange(of: draft.passphrase) { _, newValue in
+                                draft.passphrase = TreasureContentValidator.limited(
                                     newValue,
                                     maximumLength: TreasureContentLimits
                                         .maximumPassphraseLength
@@ -553,16 +598,16 @@ private struct StageEditorView: View {
                             }
 
                         CharacterLimitStatus(
-                            count: stage.passphrase.count,
+                            count: draft.passphrase.count,
                             maximum: TreasureContentLimits.maximumPassphraseLength
                         )
                     }
                 }
 
-                if stage.verification == .qrCode && QRCodeScannerCapability.isSupported {
+                if draft.verification == .qrCode && QRCodeScannerCapability.isSupported {
                     NavigationLink {
                         QRCodePreparationView(
-                            payload: stage.verificationPayload,
+                            payload: draft.verificationPayload,
                             treasureNumber: number
                         )
                     } label: {
@@ -570,8 +615,8 @@ private struct StageEditorView: View {
                     }
                 }
 
-                if stage.verification == .nfc && NFCSessionController.isAvailable {
-                    NFCWriterControl(payload: stage.verificationPayload)
+                if draft.verification == .nfc && NFCSessionController.isAvailable {
+                    NFCWriterControl(payload: draft.verificationPayload)
                 }
             } header: {
                 Text("見つけたことの確認")
@@ -580,10 +625,10 @@ private struct StageEditorView: View {
             }
 
             Section {
-                TextEditor(text: $stage.discoveryMessage)
+                TextEditor(text: $draft.discoveryMessage)
                     .frame(minHeight: 82)
-                    .onChange(of: stage.discoveryMessage) { _, newValue in
-                        stage.discoveryMessage = TreasureContentValidator.limited(
+                    .onChange(of: draft.discoveryMessage) { _, newValue in
+                        draft.discoveryMessage = TreasureContentValidator.limited(
                             newValue,
                             maximumLength: TreasureContentLimits
                                 .maximumDiscoveryMessageLength
@@ -599,7 +644,7 @@ private struct StageEditorView: View {
                     )
 
                     CharacterLimitStatus(
-                        count: stage.discoveryMessage.count,
+                        count: draft.discoveryMessage.count,
                         maximum: TreasureContentLimits.maximumDiscoveryMessageLength
                     )
                 }
@@ -609,11 +654,37 @@ private struct StageEditorView: View {
         .treasureBackground(.editor)
         .navigationTitle(isLast ? "宝 \(number)・ゴール" : "宝 \(number)")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("キャンセル") {
+                    dismiss()
+                }
+            }
+
+            ToolbarItem(placement: .confirmationAction) {
+                Button("入力完了") {
+                    stage = draft
+                    dismiss()
+                }
+                .fontWeight(.semibold)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Text("変更は「入力完了」で前の画面に反映されます。最後に「保存」を押してください。")
+                .font(.footnote)
+                .foregroundStyle(TreasureTheme.secondaryText)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(.regularMaterial)
+        }
         .tint(TreasureTheme.teal)
     }
 
     private var verificationHelp: String {
-        switch stage.verification {
+        switch draft.verification {
         case .honesty:
             "準備は不要です。見つけたら「みつけた！」ボタンを押します。"
         case .passphrase:
@@ -634,7 +705,7 @@ private struct StageEditorView: View {
     }
 
     private var verificationIsUnavailable: Bool {
-        switch stage.verification {
+        switch draft.verification {
         case .qrCode:
             !QRCodeScannerCapability.isSupported
         case .nfc:

@@ -36,6 +36,27 @@ final class LowRiskRegressionTests: XCTestCase {
         XCTAssertFalse(restoredPreferences.effectsAndHapticsAreEnabled)
     }
 
+    func testHintSpeechTextIsNaturalized() {
+        XCTAssertEqual(
+            HintSpeechTextFormatter.naturalized(
+                " ソファの下を見て \n 次はつくえ！ "
+            ),
+            "ソファの下を見て。 次はつくえ！"
+        )
+        XCTAssertEqual(
+            HintSpeechTextFormatter.naturalized("いすのうしろ"),
+            "いすのうしろ。"
+        )
+        XCTAssertEqual(
+            HintSpeechTextFormatter.naturalized("「右を見て！」"),
+            "「右を見て！」"
+        )
+        XCTAssertEqual(
+            HintSpeechTextFormatter.naturalized(" \n "),
+            ""
+        )
+    }
+
     @MainActor
     func testContentLimitsMatchTransferValidation() throws {
         let package = HuntTransferPackage(

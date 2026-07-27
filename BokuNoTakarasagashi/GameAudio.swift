@@ -22,6 +22,68 @@ nonisolated enum HintSpeechRequestAction: Equatable, Sendable {
     }
 }
 
+nonisolated enum HintSpeechTextFormatter {
+    private static let terminalPunctuation = "。！？!?．.…"
+    private static let closingPunctuation = "」』）)]】"
+
+    static func naturalized(_ text: String) -> String {
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty }
+
+        var result = ""
+        for line in lines {
+            if !result.isEmpty {
+                result += endsInTerminalPunctuation(result)
+                    ? " "
+                    : "。 "
+            }
+            result += line
+        }
+
+        guard !result.isEmpty,
+              !endsInTerminalPunctuation(result) else {
+            return result
+        }
+        return result + "。"
+    }
+
+    private static func endsInTerminalPunctuation(
+        _ text: String
+    ) -> Bool {
+        var remainingText = text[...]
+        while let lastCharacter = remainingText.last,
+              closingPunctuation.contains(lastCharacter) {
+            remainingText.removeLast()
+        }
+        guard let lastCharacter = remainingText.last else {
+            return false
+        }
+        return terminalPunctuation.contains(lastCharacter)
+    }
+}
+
+private enum HintSpeechVoiceSelector {
+    static func preferredJapaneseVoice() -> AVSpeechSynthesisVoice? {
+        let defaultVoice = AVSpeechSynthesisVoice(language: "ja-JP")
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter {
+            $0.language == "ja-JP"
+                && !$0.voiceTraits.contains(.isNoveltyVoice)
+                && !$0.voiceTraits.contains(.isPersonalVoice)
+        }
+        if let defaultVoice,
+           defaultVoice.quality == .premium {
+            return defaultVoice
+        }
+        return voices.first {
+            $0.quality == .premium
+        } ?? defaultVoice
+    }
+}
+
 @MainActor
 final class HintSpeechController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     @Published private(set) var isSpeaking = false
@@ -53,10 +115,14 @@ final class HintSpeechController: NSObject, ObservableObject, AVSpeechSynthesize
             synthesizer.stopSpeaking(at: .immediate)
         }
 
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
-        utterance.rate = 0.47
-        utterance.pitchMultiplier = 1.05
+        let utterance = AVSpeechUtterance(
+            string: HintSpeechTextFormatter.naturalized(text)
+        )
+        utterance.voice =
+            HintSpeechVoiceSelector.preferredJapaneseVoice()
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.pitchMultiplier = 1
+        utterance.prefersAssistiveTechnologySettings = true
         currentUtteranceID = ObjectIdentifier(utterance)
         spokenText = text
         isSpeaking = true

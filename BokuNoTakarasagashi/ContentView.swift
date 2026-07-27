@@ -80,26 +80,13 @@ struct ContentView: View {
                     }
                     .tint(TreasureTheme.teal)
 
-                    Menu {
-                        Button {
-                            isCreatingHunt = true
-                        } label: {
-                            Label(
-                                "新しくつくる",
-                                systemImage: "plus.circle"
-                            )
-                        }
-
-                        Button {
-                            isImportingHunt = true
-                        } label: {
-                            Label(
-                                "共有ファイルを読み込む",
-                                systemImage: "square.and.arrow.down"
-                            )
-                        }
+                    Button {
+                        isImportingHunt = true
                     } label: {
-                        Label("宝探しを追加", systemImage: "plus")
+                        Label(
+                            "共有ファイルを読み込む",
+                            systemImage: "square.and.arrow.down"
+                        )
                     }
                     .tint(TreasureTheme.teal)
                 }
@@ -266,6 +253,8 @@ struct ContentView: View {
             }
             .treasureCompactCard()
 
+            createHuntButton
+
             ForEach(hunts) { hunt in
                 HuntCard(
                     hunt: hunt,
@@ -292,17 +281,19 @@ struct ContentView: View {
                     onDelete: { huntPendingDeletion = hunt }
                 )
             }
-
-            Button {
-                isCreatingHunt = true
-            } label: {
-                Label(
-                    "新しい宝探しをつくる",
-                    systemImage: "plus.circle.fill"
-                )
-            }
-            .buttonStyle(TreasurePrimaryButtonStyle())
         }
+    }
+
+    private var createHuntButton: some View {
+        Button {
+            isCreatingHunt = true
+        } label: {
+            Label(
+                "新しい宝探しをつくる",
+                systemImage: "plus.circle.fill"
+            )
+        }
+        .buttonStyle(TreasurePrimaryButtonStyle())
     }
 
     private func resumeLockedSessionIfNeeded() {

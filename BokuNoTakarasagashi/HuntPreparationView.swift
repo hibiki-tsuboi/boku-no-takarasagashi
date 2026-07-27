@@ -290,7 +290,7 @@ private struct PreparationStageCard: View {
                 }
 
                 ForEach(
-                    Array(stage.availableExtraHints.enumerated()),
+                    Array(stage.availableExtraHintContents.enumerated()),
                     id: \.offset
                 ) { index, extraHint in
                     Text("おたすけヒント \(index + 1)")
@@ -298,9 +298,19 @@ private struct PreparationStageCard: View {
                         .foregroundStyle(TreasureTheme.goldText)
                         .padding(.top, 5)
 
-                    Text(extraHint)
+                    Text(extraHint.text)
                         .font(.caption)
                         .foregroundStyle(TreasureTheme.ink)
+
+                    if let imageData = extraHint.imageData {
+                        HintPhotoView(
+                            data: imageData,
+                            maxHeight: 160,
+                            accessibilityLabel:
+                                "おたすけヒント \(index + 1)の写真"
+                        )
+                        .padding(.top, 5)
+                    }
                 }
             }
 

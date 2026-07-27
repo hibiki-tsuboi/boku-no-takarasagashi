@@ -200,6 +200,11 @@ final class MediumRiskRegressionTests: XCTestCase {
     @MainActor
     func testTransferRoundTripsThreeExtraHints() throws {
         let hints = ["少しだけ具体的", "場所の範囲", "答えに近い手がかり"]
+        let images: [Data?] = [
+            Data([0x01, 0x02]),
+            nil,
+            Data([0x03, 0x04]),
+        ]
         let package = HuntTransferPackage(
             title: "複数ヒント",
             openingMessage: "開始",
@@ -212,7 +217,13 @@ final class MediumRiskRegressionTests: XCTestCase {
                     discoveryMessage: "発見",
                     verificationRawValue: TreasureVerification.honesty.rawValue,
                     passphrase: "",
-                    extraHints: hints
+                    extraHints: hints,
+                    extraHintContents: zip(hints, images).map {
+                        HuntTransferPackage.ExtraHintContent(
+                            text: $0.0,
+                            imageData: $0.1
+                        )
+                    }
                 ),
             ]
         )
@@ -222,6 +233,10 @@ final class MediumRiskRegressionTests: XCTestCase {
         )
 
         XCTAssertEqual(decoded.stages[0].availableExtraHints, hints)
+        XCTAssertEqual(
+            decoded.stages[0].availableExtraHintContents.map(\.imageData),
+            images
+        )
     }
 
     @MainActor
@@ -276,6 +291,37 @@ final class MediumRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testTransferRejectsOversizedExtraHintPhoto() {
+        let package = HuntTransferPackage(
+            title: "大きすぎる写真",
+            openingMessage: "開始",
+            completionMessage: "完了",
+            stages: [
+                .init(
+                    hint: "通常ヒント",
+                    extraHint: "おたすけ",
+                    hintImageData: nil,
+                    discoveryMessage: "発見",
+                    verificationRawValue: TreasureVerification.honesty.rawValue,
+                    passphrase: "",
+                    extraHints: ["おたすけ"],
+                    extraHintContents: [
+                        .init(
+                            text: "おたすけ",
+                            imageData: Data(
+                                count: TreasureContentLimits
+                                    .maximumStagePhotoByteCount + 1
+                            )
+                        ),
+                    ]
+                ),
+            ]
+        )
+
+        XCTAssertThrowsError(try package.validate())
+    }
+
+    @MainActor
     func testThreeExtraHintsPersistThroughSwiftData() throws {
         let schema = Schema([
             TreasureHunt.self,
@@ -297,6 +343,9 @@ final class MediumRiskRegressionTests: XCTestCase {
             extraHint: "おたすけ1",
             extraHint2: "おたすけ2",
             extraHint3: "おたすけ3",
+            extraHintImageData: Data([0x01]),
+            extraHint2ImageData: nil,
+            extraHint3ImageData: Data([0x03]),
             discoveryMessage: "発見",
             verification: .honesty,
             passphrase: ""
@@ -314,6 +363,10 @@ final class MediumRiskRegressionTests: XCTestCase {
         XCTAssertEqual(
             savedStage.availableExtraHints,
             ["おたすけ1", "おたすけ2", "おたすけ3"]
+        )
+        XCTAssertEqual(
+            savedStage.availableExtraHintContents.map(\.imageData),
+            [Data([0x01]), nil, Data([0x03])]
         )
     }
 

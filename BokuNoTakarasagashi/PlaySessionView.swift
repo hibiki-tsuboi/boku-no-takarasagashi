@@ -249,7 +249,7 @@ struct PlaySessionView: View {
 
     @ViewBuilder
     private func extraHintControls(for stage: TreasureStage) -> some View {
-        let extraHints = stage.availableExtraHints
+        let extraHints = stage.availableExtraHintContents
         let revealedCount = min(
             hunt.revealedExtraHintCount(for: stage.id),
             extraHints.count
@@ -262,7 +262,8 @@ struct PlaySessionView: View {
                     id: \.offset
                 ) { index, extraHint in
                     HuntExtraHintCard(
-                        extraHint: extraHint,
+                        extraHint: extraHint.text,
+                        imageData: extraHint.imageData,
                         number: index + 1,
                         totalCount: extraHints.count,
                         speechController: speechController

@@ -174,7 +174,7 @@ struct HuntPreviewView: View {
 
     @ViewBuilder
     private func extraHintPreview(for stage: TreasureStage) -> some View {
-        let extraHints = stage.availableExtraHints
+        let extraHints = stage.availableExtraHintContents
         let revealedCount = min(
             revealedExtraHintCounts[stage.id] ?? 0,
             extraHints.count
@@ -187,7 +187,8 @@ struct HuntPreviewView: View {
                     id: \.offset
                 ) { index, extraHint in
                     HuntExtraHintCard(
-                        extraHint: extraHint,
+                        extraHint: extraHint.text,
+                        imageData: extraHint.imageData,
                         number: index + 1,
                         totalCount: extraHints.count,
                         speechController: speechController

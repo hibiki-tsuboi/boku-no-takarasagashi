@@ -134,6 +134,11 @@ nonisolated enum TreasureContentValidator {
     }
 }
 
+nonisolated struct TreasureExtraHintContent: Equatable, Sendable {
+    let text: String
+    let imageData: Data?
+}
+
 @Model
 final class TreasureHunt {
     var id: UUID
@@ -254,6 +259,9 @@ final class TreasureStage {
     var extraHint2: String?
     var extraHint3: String?
     @Attribute(.externalStorage) var hintImageData: Data?
+    @Attribute(.externalStorage) var extraHintImageData: Data?
+    @Attribute(.externalStorage) var extraHint2ImageData: Data?
+    @Attribute(.externalStorage) var extraHint3ImageData: Data?
     var discoveryMessage: String
     var verificationRawValue: String
     var passphrase: String
@@ -267,6 +275,9 @@ final class TreasureStage {
         extraHint2: String? = nil,
         extraHint3: String? = nil,
         hintImageData: Data? = nil,
+        extraHintImageData: Data? = nil,
+        extraHint2ImageData: Data? = nil,
+        extraHint3ImageData: Data? = nil,
         discoveryMessage: String,
         verification: TreasureVerification,
         passphrase: String,
@@ -280,6 +291,9 @@ final class TreasureStage {
         self.extraHint2 = extraHint2
         self.extraHint3 = extraHint3
         self.hintImageData = hintImageData
+        self.extraHintImageData = extraHintImageData
+        self.extraHint2ImageData = extraHint2ImageData
+        self.extraHint3ImageData = extraHint3ImageData
         self.discoveryMessage = discoveryMessage
         verificationRawValue = verification.rawValue
         self.passphrase = passphrase
@@ -301,10 +315,26 @@ final class TreasureStage {
     }
 
     var availableExtraHints: [String] {
-        [extraHint, extraHint2, extraHint3].compactMap { hint in
-            guard let hint else { return nil }
-            let value = hint.trimmingCharacters(in: .whitespacesAndNewlines)
-            return value.isEmpty ? nil : value
+        availableExtraHintContents.map(\.text)
+    }
+
+    var availableExtraHintContents: [TreasureExtraHintContent] {
+        let contents = [
+            (extraHint, extraHintImageData),
+            (extraHint2, extraHint2ImageData),
+            (extraHint3, extraHint3ImageData),
+        ]
+
+        return contents.compactMap { content in
+            guard let text = content.0 else { return nil }
+            let trimmedText = text.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            guard !trimmedText.isEmpty else { return nil }
+            return TreasureExtraHintContent(
+                text: trimmedText,
+                imageData: content.1
+            )
         }
     }
 }

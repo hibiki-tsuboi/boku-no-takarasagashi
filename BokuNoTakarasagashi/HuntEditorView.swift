@@ -250,6 +250,9 @@ struct HuntEditorView: View {
     private var totalPhotoByteCount: Int {
         draft.stages.reduce(into: 0) { total, stage in
             total += stage.hintImageData?.count ?? 0
+            total += stage.extraHints.reduce(into: 0) { hintTotal, extraHint in
+                hintTotal += extraHint.imageData?.count ?? 0
+            }
         }
     }
 
@@ -317,13 +320,19 @@ struct HuntEditorView: View {
 
         for (index, stageDraft) in draft.stages.enumerated() {
             let extraHints = stageDraft.availableExtraHints
+            let firstExtraHint = extraHints.first
+            let secondExtraHint = extraHints.dropFirst().first
+            let thirdExtraHint = extraHints.dropFirst(2).first
             let stage = TreasureStage(
                 orderIndex: index,
                 hint: stageDraft.hint.trimmed,
-                extraHint: extraHints.first,
-                extraHint2: extraHints.dropFirst().first,
-                extraHint3: extraHints.dropFirst(2).first,
+                extraHint: firstExtraHint?.text,
+                extraHint2: secondExtraHint?.text,
+                extraHint3: thirdExtraHint?.text,
                 hintImageData: stageDraft.hintImageData,
+                extraHintImageData: firstExtraHint?.imageData,
+                extraHint2ImageData: secondExtraHint?.imageData,
+                extraHint3ImageData: thirdExtraHint?.imageData,
                 discoveryMessage: stageDraft.discoveryMessage.trimmed,
                 verification: stageDraft.verification,
                 passphrase: stageDraft.passphrase.trimmed,
@@ -411,8 +420,11 @@ private struct StageDraft: Identifiable, Equatable {
     init(stage: TreasureStage) {
         id = stage.id
         hint = stage.hint
-        extraHints = stage.availableExtraHints.map { hint in
-            ExtraHintDraft(text: hint)
+        extraHints = stage.availableExtraHintContents.map { content in
+            ExtraHintDraft(
+                text: content.text,
+                imageData: content.imageData
+            )
         }
         hintImageData = stage.hintImageData
         discoveryMessage = stage.discoveryMessage
@@ -425,20 +437,38 @@ private struct StageDraft: Identifiable, Equatable {
         TreasurePayload.make(token: verificationToken)
     }
 
-    var availableExtraHints: [String] {
+    var availableExtraHints: [ExtraHintDraft] {
         extraHints
-            .map(\.text.trimmed)
-            .filter { !$0.isEmpty }
+            .compactMap { extraHint in
+                let text = extraHint.text.trimmed
+                guard !text.isEmpty else { return nil }
+                return ExtraHintDraft(
+                    id: extraHint.id,
+                    text: text,
+                    imageData: extraHint.imageData
+                )
+            }
+    }
+
+    var hasPhotos: Bool {
+        hintImageData != nil
+            || extraHints.contains { $0.imageData != nil }
     }
 }
 
 private struct ExtraHintDraft: Identifiable, Equatable {
     let id: UUID
     var text: String
+    var imageData: Data?
 
-    init(id: UUID = UUID(), text: String = "") {
+    init(
+        id: UUID = UUID(),
+        text: String = "",
+        imageData: Data? = nil
+    ) {
         self.id = id
         self.text = text
+        self.imageData = imageData
     }
 }
 
@@ -482,11 +512,11 @@ private struct StageRow: View {
 
             Spacer()
 
-            if stage.hintImageData != nil {
+            if stage.hasPhotos {
                 Image(systemName: "photo.fill")
                     .font(.caption)
                     .foregroundStyle(TreasureTheme.coralText)
-                    .accessibilityLabel("写真ヒントあり")
+                    .accessibilityLabel("写真つきヒントあり")
             }
 
             Image(systemName: stage.verification.systemImage)
@@ -588,6 +618,18 @@ private struct StageEditorView: View {
                             count: extraHint.text.count,
                             maximum: TreasureContentLimits.maximumExtraHintLength
                         )
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("写真（任意）")
+                                .font(.subheadline.weight(.semibold))
+
+                            HintPhotoEditor(
+                                imageData: $extraHint.imageData,
+                                photoAccessibilityLabel:
+                                    "おたすけヒント "
+                                    + "\(extraHintNumber(for: extraHint.id))の写真"
+                            )
+                        }
                     }
                 }
 

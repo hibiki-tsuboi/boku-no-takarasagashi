@@ -6,10 +6,16 @@
 import Foundation
 
 nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
+    struct ExtraHintContent: Codable, Equatable, Sendable {
+        let text: String
+        let imageData: Data?
+    }
+
     struct Stage: Codable, Equatable, Sendable {
         let hint: String
         let extraHint: String?
         let extraHints: [String]?
+        let extraHintContents: [ExtraHintContent]?
         let hintImageData: Data?
         let discoveryMessage: String
         let verificationRawValue: String
@@ -22,11 +28,13 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
             discoveryMessage: String,
             verificationRawValue: String,
             passphrase: String,
-            extraHints: [String]? = nil
+            extraHints: [String]? = nil,
+            extraHintContents: [ExtraHintContent]? = nil
         ) {
             self.hint = hint
             self.extraHint = extraHint
             self.extraHints = extraHints
+            self.extraHintContents = extraHintContents
             self.hintImageData = hintImageData
             self.discoveryMessage = discoveryMessage
             self.verificationRawValue = verificationRawValue
@@ -34,6 +42,9 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
         }
 
         var availableExtraHints: [String] {
+            if let extraHintContents {
+                return extraHintContents.map(\.text)
+            }
             if let extraHints {
                 return extraHints
             }
@@ -44,6 +55,23 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
                 return []
             }
             return [extraHint]
+        }
+
+        var availableExtraHintContents: [ExtraHintContent] {
+            if let extraHintContents {
+                return extraHintContents
+            }
+            return availableExtraHints.map { extraHint in
+                ExtraHintContent(text: extraHint, imageData: nil)
+            }
+        }
+
+        var allPhotoData: [Data] {
+            var photoData = availableExtraHintContents.compactMap(\.imageData)
+            if let hintImageData {
+                photoData.insert(hintImageData, at: 0)
+            }
+            return photoData
         }
     }
 
@@ -123,6 +151,39 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
 
         var totalPhotoSize = 0
         for stage in stages {
+            if let extraHints = stage.extraHints {
+                guard extraHints.count
+                    <= TreasureContentLimits.maximumExtraHintCount,
+                    extraHints.allSatisfy({
+                        TreasureContentValidator.isValidRequiredText(
+                            $0,
+                            maximumLength: TreasureContentLimits
+                                .maximumExtraHintLength
+                        )
+                    }) else {
+                    throw HuntTransferError.invalidContent
+                }
+            }
+
+            if let extraHintContents = stage.extraHintContents {
+                guard extraHintContents.count
+                    <= TreasureContentLimits.maximumExtraHintCount,
+                    extraHintContents.allSatisfy({
+                        TreasureContentValidator.isValidRequiredText(
+                            $0.text,
+                            maximumLength: TreasureContentLimits
+                                .maximumExtraHintLength
+                        )
+                    }) else {
+                    throw HuntTransferError.invalidContent
+                }
+
+                if let extraHints = stage.extraHints,
+                   extraHints != extraHintContents.map(\.text) {
+                    throw HuntTransferError.invalidContent
+                }
+            }
+
             guard TreasureContentValidator.isValidRequiredText(
                       stage.hint,
                       maximumLength: TreasureContentLimits.maximumHintLength
@@ -162,7 +223,7 @@ nonisolated struct HuntTransferPackage: Codable, Equatable, Sendable {
                 throw HuntTransferError.invalidContent
             }
 
-            if let photoData = stage.hintImageData {
+            for photoData in stage.allPhotoData {
                 guard photoData.count
                     <= TreasureContentLimits.maximumStagePhotoByteCount else {
                     throw HuntTransferError.invalidContent

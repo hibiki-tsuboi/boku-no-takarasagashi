@@ -144,6 +144,8 @@ final class LowRiskRegressionTests: XCTestCase {
         let stage = TreasureStage(
             orderIndex: 0,
             hint: "ヒント",
+            extraHint: "写真つきおたすけ",
+            extraHintImageData: Data([0x01, 0x02]),
             discoveryMessage: "発見",
             verification: .honesty,
             passphrase: "",
@@ -161,6 +163,15 @@ final class LowRiskRegressionTests: XCTestCase {
         XCTAssertLessThanOrEqual(
             copy.title.count,
             TreasureContentLimits.maximumHuntTitleLength
+        )
+        XCTAssertEqual(
+            copy.sortedStages.first?.availableExtraHintContents,
+            [
+                TreasureExtraHintContent(
+                    text: "写真つきおたすけ",
+                    imageData: Data([0x01, 0x02])
+                ),
+            ]
         )
         XCTAssertNoThrow(try copyPackage.validate())
     }

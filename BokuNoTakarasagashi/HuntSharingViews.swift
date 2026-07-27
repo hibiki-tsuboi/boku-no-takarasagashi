@@ -280,7 +280,12 @@ private struct HuntShareContent: View {
     }
 
     private var photoCount: Int {
-        hunt.stages.filter { $0.hintImageData != nil }.count
+        hunt.stages.reduce(into: 0) { total, stage in
+            total += stage.hintImageData == nil ? 0 : 1
+            total += stage.availableExtraHintContents
+                .compactMap(\.imageData)
+                .count
+        }
     }
 
     private func prepareShareFile() {
@@ -412,7 +417,9 @@ struct HuntImportView: View {
     }
 
     private var photoCount: Int {
-        package.stages.filter { $0.hintImageData != nil }.count
+        package.stages.reduce(into: 0) { total, stage in
+            total += stage.allPhotoData.count
+        }
     }
 
     private var requiresNewVerificationTools: Bool {

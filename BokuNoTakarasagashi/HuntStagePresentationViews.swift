@@ -58,6 +58,7 @@ struct HuntHintCard: View {
 
 struct HuntExtraHintCard: View {
     let extraHint: String
+    let imageData: Data?
     let number: Int
     let totalCount: Int
 
@@ -68,6 +69,13 @@ struct HuntExtraHintCard: View {
             Label(title, systemImage: "lightbulb.fill")
                 .font(.headline)
                 .foregroundStyle(TreasureTheme.goldText)
+
+            if let imageData {
+                HintPhotoView(
+                    data: imageData,
+                    accessibilityLabel: "\(title)の写真"
+                )
+            }
 
             Text(extraHint)
                 .font(.system(.title3, design: .rounded, weight: .semibold))

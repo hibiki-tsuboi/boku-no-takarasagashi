@@ -135,15 +135,18 @@ enum HuntTransferService {
             ) else {
                 throw HuntTransferError.invalidContent
             }
-            let extraHints = transferredStage.availableExtraHints
+            let extraHints = transferredStage.availableExtraHintContents
 
             let stage = TreasureStage(
                 orderIndex: index,
                 hint: transferredStage.hint,
-                extraHint: extraHints[safe: 0],
-                extraHint2: extraHints[safe: 1],
-                extraHint3: extraHints[safe: 2],
+                extraHint: extraHints[safe: 0]?.text,
+                extraHint2: extraHints[safe: 1]?.text,
+                extraHint3: extraHints[safe: 2]?.text,
                 hintImageData: transferredStage.hintImageData,
+                extraHintImageData: extraHints[safe: 0]?.imageData,
+                extraHint2ImageData: extraHints[safe: 1]?.imageData,
+                extraHint3ImageData: extraHints[safe: 2]?.imageData,
                 discoveryMessage: transferredStage.discoveryMessage,
                 verification: verification,
                 passphrase: transferredStage.passphrase,
@@ -163,9 +166,10 @@ enum HuntTransferService {
             guard TreasureVerification(rawValue: stage.verificationRawValue) != nil else {
                 throw HuntTransferError.invalidContent
             }
-            if let imageData = stage.hintImageData,
-               !isValidImage(imageData) {
-                throw HuntTransferError.unreadablePhoto
+            for imageData in stage.allPhotoData {
+                if !isValidImage(imageData) {
+                    throw HuntTransferError.unreadablePhoto
+                }
             }
         }
     }
@@ -230,7 +234,8 @@ extension HuntTransferPackage {
             openingMessage: hunt.openingMessage,
             completionMessage: hunt.completionMessage,
             stages: hunt.sortedStages.map { stage in
-                let extraHints = stage.availableExtraHints
+                let extraHintContents = stage.availableExtraHintContents
+                let extraHints = extraHintContents.map(\.text)
                 return Stage(
                     hint: stage.hint,
                     extraHint: extraHints.first,
@@ -238,7 +243,13 @@ extension HuntTransferPackage {
                     discoveryMessage: stage.discoveryMessage,
                     verificationRawValue: stage.verification.rawValue,
                     passphrase: stage.passphrase,
-                    extraHints: extraHints
+                    extraHints: extraHints,
+                    extraHintContents: extraHintContents.map { content in
+                        HuntTransferPackage.ExtraHintContent(
+                            text: content.text,
+                            imageData: content.imageData
+                        )
+                    }
                 )
             }
         )

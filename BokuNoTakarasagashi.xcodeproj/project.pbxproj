@@ -156,10 +156,10 @@
 				};
 			};
 			buildConfigurationList = B602673B3014F6EF0068864B /* Build configuration list for PBXProject "BokuNoTakarasagashi" */;
-			developmentRegion = en;
+			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				ja,
 				Base,
 			);
 			mainGroup = B60267373014F6EF0068864B;

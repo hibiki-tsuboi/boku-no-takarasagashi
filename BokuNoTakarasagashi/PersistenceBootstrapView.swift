@@ -117,7 +117,7 @@ enum PersistenceStoreFactory {
             storeURL,
             URL(filePath: storeURL.path + "-shm"),
             URL(filePath: storeURL.path + "-wal"),
-            URL(filePath: storeURL.path + "_SUPPORT", directoryHint: .isDirectory),
+            externalStorageSupportURL(for: storeURL),
         ]
         var firstError: Error?
 
@@ -132,6 +132,15 @@ enum PersistenceStoreFactory {
         if let firstError {
             throw firstError
         }
+    }
+
+    private static func externalStorageSupportURL(for storeURL: URL) -> URL {
+        let storeName = storeURL.deletingPathExtension().lastPathComponent
+        return storeURL.deletingLastPathComponent()
+            .appending(
+                path: ".\(storeName)_SUPPORT",
+                directoryHint: .isDirectory
+            )
     }
 }
 

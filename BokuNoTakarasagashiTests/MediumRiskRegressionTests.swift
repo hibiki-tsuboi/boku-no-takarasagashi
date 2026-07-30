@@ -636,8 +636,8 @@ final class MediumRiskRegressionTests: XCTestCase {
         for url in relatedURLs {
             try Data("test".utf8).write(to: url)
         }
-        let supportURL = URL(
-            filePath: storeURL.path + "_SUPPORT",
+        let supportURL = directory.appending(
+            path: ".test_SUPPORT",
             directoryHint: .isDirectory
         )
         try FileManager.default.createDirectory(
@@ -653,6 +653,84 @@ final class MediumRiskRegressionTests: XCTestCase {
             XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
         }
         XCTAssertTrue(FileManager.default.fileExists(atPath: unrelatedURL.path))
+    }
+
+    @MainActor
+    func testStoreResetRemovesSwiftDataExternalStorage() throws {
+        let fileManager = FileManager.default
+        let directory = fileManager.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try fileManager.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? fileManager.removeItem(at: directory)
+        }
+
+        let storeURL = directory.appending(
+            path: "test.store",
+            directoryHint: .notDirectory
+        )
+        let supportURL = directory.appending(
+            path: ".test_SUPPORT",
+            directoryHint: .isDirectory
+        )
+        let externalDataURL = supportURL.appending(
+            path: "_EXTERNAL_DATA",
+            directoryHint: .isDirectory
+        )
+        let unrelatedURL = directory.appending(
+            path: "keep.txt",
+            directoryHint: .notDirectory
+        )
+        try Data("keep".utf8).write(to: unrelatedURL)
+
+        try autoreleasepool {
+            let schema = Schema([
+                TreasureHunt.self,
+                TreasureStage.self,
+                AdventureRecord.self,
+            ])
+            let configuration = ModelConfiguration(
+                schema: schema,
+                url: storeURL,
+                cloudKitDatabase: .none
+            )
+            let container = try ModelContainer(
+                for: schema,
+                configurations: [configuration]
+            )
+            let context = ModelContext(container)
+            context.insert(
+                AdventureRecord(
+                    huntID: UUID(),
+                    huntTitle: "外部保存テスト",
+                    treasureCount: 1,
+                    extraHintsUsedCount: 0,
+                    victoryPhotoData: Data(
+                        repeating: 0xA5,
+                        count: 2 * 1_024 * 1_024
+                    )
+                )
+            )
+            try context.save()
+
+            XCTAssertTrue(
+                fileManager.fileExists(atPath: externalDataURL.path)
+            )
+            XCTAssertFalse(
+                try fileManager
+                    .contentsOfDirectory(atPath: externalDataURL.path)
+                    .isEmpty
+            )
+        }
+
+        try PersistenceStoreFactory.removeStore(at: storeURL)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: storeURL.path))
+        XCTAssertFalse(fileManager.fileExists(atPath: supportURL.path))
+        XCTAssertTrue(fileManager.fileExists(atPath: unrelatedURL.path))
     }
 
     @MainActor

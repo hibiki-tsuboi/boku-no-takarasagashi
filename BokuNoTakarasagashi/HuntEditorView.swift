@@ -693,7 +693,7 @@ private struct StageEditorView: View {
                 Text("ヒント")
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("隠し場所を直接言わず、子どもが考えられる言葉にします。")
+                    Text("隠し場所を直接言わず、さがす人が考えられる言葉にします。")
                     Text("写真には、隠し場所の一部分など答えがすぐ分からないものがおすすめです。")
                     CharacterLimitStatus(
                         count: draft.hint.count,

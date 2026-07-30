@@ -140,7 +140,7 @@ struct PlaySessionView: View {
         .alert("冒険を開始できません", isPresented: sessionErrorIsPresented) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(sessionError ?? "おうちの人に確認してください。")
+            Text(sessionError ?? "しかける人に確認してください。")
         }
         .sensoryFeedback(
             .success,
@@ -188,7 +188,7 @@ struct PlaySessionView: View {
                         isShowingCancellationConfirmation = true
                     } label: {
                         Label(
-                            "おうちの人にわたす",
+                            "しかける人にわたす",
                             systemImage: "person.crop.circle"
                         )
                             .font(.caption.weight(.semibold))
@@ -230,13 +230,13 @@ struct PlaySessionView: View {
             ContentUnavailableView {
                 Label("ヒントがありません", systemImage: "questionmark.folder")
             } description: {
-                Text("おうちの人にiPhoneをわたしてください。")
+                Text("しかける人にiPhoneをわたしてください。")
             } actions: {
                 Button {
                     isShowingCancellationConfirmation = true
                 } label: {
                     Label(
-                        "おうちの人にわたす",
+                        "しかける人にわたす",
                         systemImage: "person.crop.circle"
                     )
                 }
@@ -431,7 +431,7 @@ struct PlaySessionView: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(TreasureTheme.coralText)
 
-                    Text("おうちの人に渡して、発見方法を変更してもらってください。")
+                    Text("しかける人に渡して、発見方法を変更してもらってください。")
                         .font(.caption)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(TreasureTheme.secondaryText)
@@ -440,7 +440,7 @@ struct PlaySessionView: View {
                         isShowingCancellationConfirmation = true
                     } label: {
                         Label(
-                            "おうちの人にわたす",
+                            "しかける人にわたす",
                             systemImage: "person.crop.circle"
                         )
                     }
@@ -561,7 +561,7 @@ struct PlaySessionView: View {
                 .font(.subheadline.bold())
                 .foregroundStyle(TreasureTheme.coralText)
 
-            Text("おうちの人に渡して、発見方法を変更してもらってください。")
+            Text("しかける人に渡して、発見方法を変更してもらってください。")
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(TreasureTheme.secondaryText)
@@ -570,7 +570,7 @@ struct PlaySessionView: View {
                 isShowingCancellationConfirmation = true
             } label: {
                 Label(
-                    "おうちの人にわたす",
+                    "しかける人にわたす",
                     systemImage: "person.crop.circle"
                 )
             }
@@ -758,7 +758,7 @@ private struct CancelAdventureConfirmationView: View {
                         Text(
                             "ここまでの進み具合は取り消され、"
                                 + "次は最初のヒントから始まります。"
-                                + "iPhoneをおうちの人にわたしてから進んでください。"
+                                + "iPhoneをしかける人にわたしてから進んでください。"
                         )
                         .multilineTextAlignment(.center)
                         .foregroundStyle(TreasureTheme.secondaryText)
@@ -845,8 +845,8 @@ private struct SafetyCheckView: View {
                             text: "立入禁止や危険な場所ではありません"
                         )
                         SafetyRow(
-                            icon: "figure.2.and.child.holdinghands",
-                            text: "外では大人が一緒に見守ります"
+                            icon: "person.2.fill",
+                            text: "外では一緒に遊ぶ人と安全を確認します"
                         )
                     }
                     .treasureCard()

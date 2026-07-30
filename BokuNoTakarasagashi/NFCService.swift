@@ -511,8 +511,10 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                    self.containsForeignRecords(existingMessage) {
                     activeSession.alertMessage =
                         "既存データがあります。上書きする場合は、確認後にもう一度タグを近づけてください。"
-                    activeSession.invalidate()
-                    self.finish(.failure(.containsExistingData))
+                    self.finishAfterInvalidation(
+                        .failure(.containsExistingData),
+                        session: activeSession
+                    )
                     return
                 }
 

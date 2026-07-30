@@ -17,6 +17,7 @@ struct AdventureMemoryEditorView: View {
     @State private var memoryNote: String
     @State private var victoryPhotoData: Data?
     @State private var saveError: String?
+    @State private var photoPreparationTracker = PhotoPreparationTracker()
 
     init(record: AdventureRecord) {
         self.record = record
@@ -31,7 +32,13 @@ struct AdventureMemoryEditorView: View {
                 Section {
                     HintPhotoEditor(
                         imageData: $victoryPhotoData,
-                        photoAccessibilityLabel: "冒険の記念写真"
+                        photoAccessibilityLabel: "冒険の記念写真",
+                        onPreparationStateChange: { isPreparing in
+                            photoPreparationTracker.setPreparing(
+                                isPreparing,
+                                for: record.id
+                            )
+                        }
                     )
                 } header: {
                     Text("記念写真（任意）")
@@ -85,6 +92,7 @@ struct AdventureMemoryEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存", action: save)
                         .fontWeight(.semibold)
+                        .disabled(photoPreparationTracker.isPreparing)
                 }
             }
             .alert("思い出を保存できませんでした", isPresented: errorIsPresented) {
@@ -108,6 +116,7 @@ struct AdventureMemoryEditorView: View {
     }
 
     private func save() {
+        guard !photoPreparationTracker.isPreparing else { return }
         record.playerName = playerName.memoryTrimmed.nilIfEmpty
         record.memoryNote = memoryNote.memoryTrimmed.nilIfEmpty
         record.victoryPhotoData = victoryPhotoData

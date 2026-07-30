@@ -12,6 +12,23 @@ import XCTest
 
 final class MediumRiskRegressionTests: XCTestCase {
     @MainActor
+    func testPhotoPreparationTrackerWaitsForEveryEditor() {
+        var tracker = PhotoPreparationTracker()
+        let primaryPhotoID = UUID()
+        let extraHintPhotoID = UUID()
+
+        tracker.setPreparing(true, for: primaryPhotoID)
+        tracker.setPreparing(true, for: extraHintPhotoID)
+        tracker.setPreparing(false, for: primaryPhotoID)
+
+        XCTAssertTrue(tracker.isPreparing)
+
+        tracker.setPreparing(false, for: extraHintPhotoID)
+
+        XCTAssertFalse(tracker.isPreparing)
+    }
+
+    @MainActor
     func testCancellingGameResetsProgressAndClearsActiveSessionLock() {
         let hunt = TreasureHunt(
             title: "中止テスト",

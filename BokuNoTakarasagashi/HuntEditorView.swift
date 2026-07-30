@@ -620,6 +620,7 @@ private struct StageEditorView: View {
     @Binding private var stage: StageDraft
     @State private var draft: StageDraft
     @State private var validationWasRequested = false
+    @State private var photoPreparationTracker = PhotoPreparationTracker()
     @FocusState private var focusedField: StageEditorValidationField?
 
     let number: Int
@@ -678,7 +679,15 @@ private struct StageEditorView: View {
                     Text("写真（任意）")
                         .font(.subheadline.weight(.semibold))
 
-                    HintPhotoEditor(imageData: $draft.hintImageData)
+                    HintPhotoEditor(
+                        imageData: $draft.hintImageData,
+                        onPreparationStateChange: { isPreparing in
+                            updatePhotoPreparation(
+                                isPreparing,
+                                sourceID: draft.id
+                            )
+                        }
+                    )
                 }
             } header: {
                 Text("ヒント")
@@ -754,7 +763,13 @@ private struct StageEditorView: View {
                                 imageData: $extraHint.imageData,
                                 photoAccessibilityLabel:
                                     "おたすけヒント "
-                                    + "\(extraHintNumber(for: extraHint.id))の写真"
+                                    + "\(extraHintNumber(for: extraHint.id))の写真",
+                                onPreparationStateChange: { isPreparing in
+                                    updatePhotoPreparation(
+                                        isPreparing,
+                                        sourceID: extraHint.id
+                                    )
+                                }
                             )
                         }
                     }
@@ -925,6 +940,7 @@ private struct StageEditorView: View {
                     finishEditing()
                 }
                 .fontWeight(.semibold)
+                .disabled(photoPreparationTracker.isPreparing)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -958,10 +974,12 @@ private struct StageEditorView: View {
     }
 
     private func removeExtraHint(_ id: UUID) {
+        photoPreparationTracker.setPreparing(false, for: id)
         draft.extraHints.removeAll { $0.id == id }
     }
 
     private func finishEditing() {
+        guard !photoPreparationTracker.isPreparing else { return }
         validationWasRequested = true
         if let firstInvalidField {
             focusedField = firstInvalidField
@@ -970,6 +988,13 @@ private struct StageEditorView: View {
 
         stage = draft
         dismiss()
+    }
+
+    private func updatePhotoPreparation(
+        _ isPreparing: Bool,
+        sourceID: UUID
+    ) {
+        photoPreparationTracker.setPreparing(isPreparing, for: sourceID)
     }
 
     private var firstInvalidField: StageEditorValidationField? {

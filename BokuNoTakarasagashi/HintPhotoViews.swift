@@ -10,9 +10,26 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+struct PhotoPreparationTracker {
+    private var activeSourceIDs: Set<UUID> = []
+
+    var isPreparing: Bool {
+        !activeSourceIDs.isEmpty
+    }
+
+    mutating func setPreparing(_ isPreparing: Bool, for sourceID: UUID) {
+        if isPreparing {
+            activeSourceIDs.insert(sourceID)
+        } else {
+            activeSourceIDs.remove(sourceID)
+        }
+    }
+}
+
 struct HintPhotoEditor: View {
     @Binding var imageData: Data?
     var photoAccessibilityLabel = "ヒントの写真"
+    var onPreparationStateChange: (Bool) -> Void = { _ in }
 
     @State private var selectedItem: PhotosPickerItem?
     @State private var isShowingCamera = false
@@ -93,7 +110,7 @@ struct HintPhotoEditor: View {
             Text(errorMessage ?? "別の写真でもう一度ためしてください。")
         }
         .onDisappear {
-            preparationTask?.cancel()
+            cancelPhotoPreparation()
         }
     }
 
@@ -158,7 +175,7 @@ struct HintPhotoEditor: View {
         preparationTask?.cancel()
         let requestID = UUID()
         preparationRequestID = requestID
-        isLoading = true
+        setLoading(true)
         errorMessage = nil
         return requestID
     }
@@ -169,10 +186,10 @@ struct HintPhotoEditor: View {
     ) {
         guard preparationRequestID == requestID else { return }
         defer {
-            isLoading = false
             selectedItem = nil
             preparationTask = nil
             preparationRequestID = nil
+            setLoading(false)
         }
 
         switch result {
@@ -183,6 +200,20 @@ struct HintPhotoEditor: View {
         case nil:
             break
         }
+    }
+
+    private func cancelPhotoPreparation() {
+        preparationTask?.cancel()
+        selectedItem = nil
+        preparationTask = nil
+        preparationRequestID = nil
+        setLoading(false)
+    }
+
+    private func setLoading(_ newValue: Bool) {
+        guard isLoading != newValue else { return }
+        isLoading = newValue
+        onPreparationStateChange(newValue)
     }
 }
 

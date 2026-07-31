@@ -18,8 +18,6 @@ struct OpeningVideoView: View {
     @State private var player: AVPlayer?
     @State private var didFinish = false
     @State private var skipInteractionIsEnabled = false
-    @State private var skipPromptIsVisible = false
-    @State private var skipPromptIsDimmed = false
     @AccessibilityFocusState private var skipIsFocused: Bool
 
     var body: some View {
@@ -68,47 +66,11 @@ struct OpeningVideoView: View {
                 .disabled(!skipInteractionIsEnabled)
                 .accessibilityHidden(!skipInteractionIsEnabled)
                 .accessibilityLabel("オープニングをスキップ")
-                .accessibilityInputLabels([
-                    "TAP TO SKIP",
-                    "オープニングをスキップ",
-                ])
+                .accessibilityInputLabels(["オープニングをスキップ"])
                 .accessibilityHint(
                     "画面をタップしてタイトル画面を表示します"
                 )
                 .accessibilityFocused($skipIsFocused)
-
-                Text("TAP TO SKIP")
-                    .font(
-                        .system(
-                            .title3,
-                            design: .monospaced,
-                            weight: .heavy
-                        )
-                    )
-                    .tracking(2.8)
-                    .foregroundStyle(.white)
-                    .shadow(
-                        color: .black.opacity(0.88),
-                        radius: 4,
-                        y: 2
-                    )
-                    .opacity(skipPromptIsDimmed ? 0.68 : 0.94)
-                    .animation(
-                        .easeInOut(duration: 1.6)
-                            .repeatForever(autoreverses: true),
-                        value: skipPromptIsDimmed
-                    )
-                    .opacity(skipPromptIsVisible ? 1 : 0)
-                    .animation(
-                        .easeOut(duration: 0.45),
-                        value: skipPromptIsVisible
-                    )
-                    .position(
-                        x: proxy.size.width / 2,
-                        y: proxy.size.height * 0.75
-                    )
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
             }
             .frame(
                 width: proxy.size.width,
@@ -197,16 +159,6 @@ struct OpeningVideoView: View {
         skipInteractionIsEnabled = true
         await Task.yield()
         skipIsFocused = true
-
-        do {
-            try await Task.sleep(for: .milliseconds(500))
-        } catch {
-            return
-        }
-
-        guard !didFinish else { return }
-        skipPromptIsVisible = true
-        skipPromptIsDimmed = true
     }
 
     private func updatePlayback(for phase: ScenePhase) {

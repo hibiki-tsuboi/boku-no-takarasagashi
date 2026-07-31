@@ -17,7 +17,7 @@ struct ContentView: View {
 
     @State private var isCreatingHunt = false
     @State private var isShowingHistory = false
-    @State private var isShowingAudioSettings = false
+    @State private var isShowingSettings = false
     @State private var isImportingHunt = false
     @State private var editingHunt: TreasureHunt?
     @State private var playingHunt: TreasureHunt?
@@ -74,9 +74,9 @@ struct ContentView: View {
 
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
-                        isShowingAudioSettings = true
+                        isShowingSettings = true
                     } label: {
-                        Label("音の設定", systemImage: "speaker.wave.2")
+                        Label("設定", systemImage: "gearshape")
                     }
                     .tint(TreasureTheme.teal)
 
@@ -100,8 +100,8 @@ struct ContentView: View {
         .sheet(isPresented: $isShowingHistory) {
             AdventureHistoryView()
         }
-        .sheet(isPresented: $isShowingAudioSettings) {
-            AudioSettingsView()
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView()
         }
         .sheet(item: $editingHunt) { hunt in
             HuntEditorView(hunt: hunt)

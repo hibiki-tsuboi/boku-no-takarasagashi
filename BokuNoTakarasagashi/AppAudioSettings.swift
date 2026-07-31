@@ -87,9 +87,29 @@ final class AppAudioSettings: ObservableObject {
     }
 }
 
-struct AudioSettingsView: View {
+struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var audioSettings: AppAudioSettings
+
+    private var appVersionDescription: String {
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String
+        let build = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleVersion"
+        ) as? String
+
+        switch (version, build) {
+        case let (.some(version), .some(build)):
+            return "\(version) (\(build))"
+        case let (.some(version), .none):
+            return version
+        case let (.none, .some(build)):
+            return build
+        case (.none, .none):
+            return "—"
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -133,8 +153,15 @@ struct AudioSettingsView: View {
                     .font(.subheadline)
                     .foregroundStyle(TreasureTheme.secondaryText)
                 }
+
+                Section("アプリ情報") {
+                    LabeledContent(
+                        "バージョン",
+                        value: appVersionDescription
+                    )
+                }
             }
-            .navigationTitle("音の設定")
+            .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

@@ -45,10 +45,7 @@ struct TitleScreenView: View {
 
                     VStack(spacing: 12) {
                         Button(action: onStart) {
-                            Label(
-                                "PRESS START",
-                                systemImage: "map.fill"
-                            )
+                            Text("PRESS START")
                         }
                         .buttonStyle(TitlePrimaryButtonStyle())
                         .accessibilityLabel("ぼうけんをはじめる")
@@ -56,7 +53,7 @@ struct TitleScreenView: View {
                     .padding(.horizontal, 24)
                     .padding(
                         .bottom,
-                        max(proxy.safeAreaInsets.bottom, 16) + 32
+                        max(proxy.safeAreaInsets.bottom, 16) + 80
                     )
                     .opacity(controlsAreVisible ? 1 : 0)
                     .offset(y: controlsAreVisible ? 0 : 24)

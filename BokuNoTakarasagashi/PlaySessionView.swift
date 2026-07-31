@@ -736,54 +736,66 @@ private struct CancelAdventureConfirmationView: View {
     var body: some View {
         NavigationStack {
             TreasureBackground(style: .security) {
-                VStack(spacing: 22) {
-                    Spacer()
+                GeometryReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 22) {
+                            ZStack {
+                                Circle()
+                                    .fill(TreasureTheme.coral.opacity(0.14))
 
-                    ZStack {
-                        Circle()
-                            .fill(TreasureTheme.coral.opacity(0.14))
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 42))
+                                    .foregroundStyle(TreasureTheme.coralText)
+                            }
+                            .frame(width: 88, height: 88)
+                            .accessibilityHidden(true)
 
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 42))
-                            .foregroundStyle(TreasureTheme.coralText)
-                    }
-                    .frame(width: 88, height: 88)
-                    .accessibilityHidden(true)
+                            VStack(spacing: 9) {
+                                Text("冒険を中止する？")
+                                    .font(.title2.bold())
+                                    .foregroundStyle(TreasureTheme.ink)
 
-                    VStack(spacing: 9) {
-                        Text("冒険を中止する？")
-                            .font(.title2.bold())
-                            .foregroundStyle(TreasureTheme.ink)
-
-                        Text(
-                            "ここまでの進み具合は取り消され、"
-                                + "次は最初のヒントから始まります。"
-                                + "iPhoneをしかける人にわたしてから進んでください。"
+                                Text(
+                                    "ここまでの進み具合は取り消され、"
+                                        + "次は最初のヒントから始まります。"
+                                        + "iPhoneをしかける人にわたしてから進んでください。"
+                                )
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(TreasureTheme.secondaryText)
+                            }
+                            .treasureCard()
+                        }
+                        .frame(maxWidth: 420)
+                        .padding(24)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: proxy.size.height
                         )
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(TreasureTheme.secondaryText)
                     }
-                    .treasureCard()
-
-                    Button(role: .destructive, action: onConfirm) {
-                        Label(
-                            "中止してメニューへ戻る",
-                            systemImage: "xmark.circle.fill"
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(TreasureTheme.dangerBackground)
-
-                    Button("まだ遊ぶ", action: onCancel)
-                        .buttonStyle(.bordered)
-                        .tint(TreasureTheme.ink)
-
-                    Spacer()
+                    .scrollBounceBehavior(.basedOnSize)
                 }
-                .frame(maxWidth: 420)
-                .padding(24)
-                .frame(maxWidth: .infinity)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    VStack(spacing: 12) {
+                        Button(role: .destructive, action: onConfirm) {
+                            Label(
+                                "中止してメニューへ戻る",
+                                systemImage: "xmark.circle.fill"
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(TreasureTheme.dangerBackground)
+
+                        Button("まだ遊ぶ", action: onCancel)
+                            .buttonStyle(.bordered)
+                            .tint(TreasureTheme.ink)
+                    }
+                    .frame(maxWidth: 420)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial)
+                }
             }
             .navigationTitle("冒険を中止")
             .navigationBarTitleDisplayMode(.inline)

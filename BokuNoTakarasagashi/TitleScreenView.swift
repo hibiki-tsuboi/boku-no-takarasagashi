@@ -13,21 +13,55 @@ struct TitleScreenView: View {
     @State private var artworkScale: CGFloat = 1.035
     @State private var controlsAreVisible = false
 
+    private let artworkAspectRatio: CGFloat = 852 / 1846
+
     var body: some View {
         GeometryReader { proxy in
+            let usesContainedArtwork = shouldContainArtwork(in: proxy.size)
+
             ZStack {
-                Image("TitleScreen")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(
-                        width: proxy.size.width,
-                        height: proxy.size.height
-                    )
-                    .clipped()
-                    .scaleEffect(artworkScale)
-                    .accessibilityLabel(
-                        "ぼくの宝探し。宝箱と地図が描かれたタイトル画面"
-                    )
+                if usesContainedArtwork {
+                    Image("TitleScreen")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height
+                        )
+                        .clipped()
+                        .scaleEffect(1.12)
+                        .blur(radius: 36)
+                        .overlay(.black.opacity(0.28))
+                        .accessibilityHidden(true)
+
+                    Image("TitleScreen")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(
+                            width: min(
+                                proxy.size.width,
+                                proxy.size.height * artworkAspectRatio
+                            ),
+                            height: proxy.size.height
+                        )
+                        .shadow(color: .black.opacity(0.5), radius: 24)
+                        .accessibilityLabel(
+                            "ぼくの宝探し。宝箱と地図が描かれたタイトル画面"
+                        )
+                } else {
+                    Image("TitleScreen")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height
+                        )
+                        .clipped()
+                        .scaleEffect(artworkScale)
+                        .accessibilityLabel(
+                            "ぼくの宝探し。宝箱と地図が描かれたタイトル画面"
+                        )
+                }
 
                 LinearGradient(
                     colors: [
@@ -51,6 +85,9 @@ struct TitleScreenView: View {
                         .accessibilityLabel("ぼうけんをはじめる")
                     }
                     .padding(.horizontal, 24)
+                    .frame(
+                        maxWidth: usesContainedArtwork ? 560 : .infinity
+                    )
                     .padding(
                         .bottom,
                         max(proxy.safeAreaInsets.bottom, 16) + 80
@@ -67,6 +104,11 @@ struct TitleScreenView: View {
         .ignoresSafeArea()
         .statusBarHidden(true)
         .onAppear(perform: showControls)
+    }
+
+    private func shouldContainArtwork(in size: CGSize) -> Bool {
+        guard size.height > 0 else { return false }
+        return size.width / size.height > 0.56
     }
 
     private func showControls() {

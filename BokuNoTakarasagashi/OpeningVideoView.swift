@@ -24,12 +24,40 @@ struct OpeningVideoView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let usesContainedVideo = shouldContainVideo(in: proxy.size)
+
             ZStack {
-                Color(red: 0.16, green: 0.09, blue: 0.04)
+                RadialGradient(
+                    colors: [
+                        Color(red: 0.27, green: 0.16, blue: 0.08),
+                        Color(red: 0.10, green: 0.05, blue: 0.02),
+                    ],
+                    center: .center,
+                    startRadius: 40,
+                    endRadius: max(proxy.size.width, proxy.size.height) * 0.72
+                )
+                .accessibilityHidden(true)
 
                 if let player {
-                    OpeningPlayerSurface(player: player)
-                        .transition(.opacity)
+                    if usesContainedVideo {
+                        OpeningPlayerSurface(player: player)
+                            .frame(
+                                width: min(
+                                    proxy.size.width,
+                                    proxy.size.height * 9 / 16
+                                ),
+                                height: proxy.size.height
+                            )
+                            .clipped()
+                            .shadow(
+                                color: .black.opacity(0.58),
+                                radius: 28
+                            )
+                            .transition(.opacity)
+                    } else {
+                        OpeningPlayerSurface(player: player)
+                            .transition(.opacity)
+                    }
                 }
 
                 Button(action: finish) {
@@ -125,6 +153,11 @@ struct OpeningVideoView: View {
             guard isCurrentPlayerItem(notification.object) else { return }
             finish()
         }
+    }
+
+    private func shouldContainVideo(in size: CGSize) -> Bool {
+        guard size.height > 0 else { return false }
+        return size.width / size.height > 0.62
     }
 
     private func startPlayback() {

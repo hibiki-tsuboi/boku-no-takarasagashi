@@ -46,11 +46,12 @@ struct TitleScreenView: View {
                     VStack(spacing: 12) {
                         Button(action: onStart) {
                             Label(
-                                "ぼうけんをはじめる",
+                                "PRESS START",
                                 systemImage: "map.fill"
                             )
                         }
                         .buttonStyle(TitlePrimaryButtonStyle())
+                        .accessibilityLabel("ぼうけんをはじめる")
                     }
                     .padding(.horizontal, 24)
                     .padding(

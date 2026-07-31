@@ -17,11 +17,14 @@ struct OpeningVideoView: View {
 
     @State private var player: AVPlayer?
     @State private var didFinish = false
+    @State private var skipInteractionIsEnabled = false
+    @State private var skipPromptIsVisible = false
+    @State private var skipPromptIsDimmed = false
     @AccessibilityFocusState private var skipIsFocused: Bool
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .topTrailing) {
+            ZStack {
                 Color(red: 0.16, green: 0.09, blue: 0.04)
 
                 if let player {
@@ -29,26 +32,51 @@ struct OpeningVideoView: View {
                         .transition(.opacity)
                 }
 
-                Button("スキップ", action: finish)
-                    .font(.subheadline.weight(.bold))
+                Button(action: finish) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!skipInteractionIsEnabled)
+                .accessibilityHidden(!skipInteractionIsEnabled)
+                .accessibilityLabel("オープニングをスキップ")
+                .accessibilityHint(
+                    "画面をタップしてタイトル画面を表示します"
+                )
+                .accessibilityFocused($skipIsFocused)
+
+                Text("TAP TO SKIP")
+                    .font(
+                        .system(
+                            .title3,
+                            design: .monospaced,
+                            weight: .heavy
+                        )
+                    )
+                    .tracking(2.8)
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(
-                        .black.opacity(0.54),
-                        in: Capsule()
+                    .shadow(
+                        color: .black.opacity(0.88),
+                        radius: 4,
+                        y: 2
                     )
-                    .overlay {
-                        Capsule()
-                            .stroke(.white.opacity(0.45), lineWidth: 1)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, proxy.safeAreaInsets.top + 12)
-                    .padding(.trailing, 18)
-                    .accessibilityHint(
-                        "オープニングを終了してタイトル画面を表示します"
+                    .opacity(skipPromptIsDimmed ? 0.68 : 0.94)
+                    .animation(
+                        .easeInOut(duration: 1.6)
+                            .repeatForever(autoreverses: true),
+                        value: skipPromptIsDimmed
                     )
-                    .accessibilityFocused($skipIsFocused)
+                    .opacity(skipPromptIsVisible ? 1 : 0)
+                    .animation(
+                        .easeOut(duration: 0.45),
+                        value: skipPromptIsVisible
+                    )
+                    .position(
+                        x: proxy.size.width / 2,
+                        y: proxy.size.height * 0.75
+                    )
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
             .frame(
                 width: proxy.size.width,
@@ -60,12 +88,14 @@ struct OpeningVideoView: View {
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
         .onAppear {
-            skipIsFocused = true
             if reduceMotion {
                 finish()
             } else {
                 startPlayback()
             }
+        }
+        .task {
+            await prepareSkipInteraction()
         }
         .onDisappear(perform: stopPlayback)
         .onChange(of: reduceMotion) { _, shouldReduceMotion in
@@ -115,6 +145,31 @@ struct OpeningVideoView: View {
         openingPlayer.isMuted = !audioSettings.backgroundMusicIsEnabled
         player = openingPlayer
         openingPlayer.play()
+    }
+
+    private func prepareSkipInteraction() async {
+        guard !reduceMotion else { return }
+
+        do {
+            try await Task.sleep(for: .milliseconds(500))
+        } catch {
+            return
+        }
+
+        guard !didFinish else { return }
+        skipInteractionIsEnabled = true
+        await Task.yield()
+        skipIsFocused = true
+
+        do {
+            try await Task.sleep(for: .milliseconds(500))
+        } catch {
+            return
+        }
+
+        guard !didFinish else { return }
+        skipPromptIsVisible = true
+        skipPromptIsDimmed = true
     }
 
     private func updatePlayback(for phase: ScenePhase) {

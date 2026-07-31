@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import Accessibility
 import SwiftUI
 
 struct HuntPreviewView: View {
@@ -500,7 +501,9 @@ struct HuntPreviewView: View {
         if stage.matches(passphrase) {
             revealDiscovery()
         } else {
-            answerError = "ちがうみたい。本番と同じ合言葉を入力してください。"
+            let message = "ちがうみたい。本番と同じ合言葉を入力してください。"
+            answerError = message
+            AccessibilityNotification.Announcement(message).post()
         }
     }
 

@@ -83,6 +83,10 @@ struct TitleScreenView: View {
                         }
                         .buttonStyle(TitlePrimaryButtonStyle())
                         .accessibilityLabel("ぼうけんをはじめる")
+                        .accessibilityInputLabels([
+                            "PRESS START",
+                            "ぼうけんをはじめる",
+                        ])
                     }
                     .padding(.horizontal, 24)
                     .frame(

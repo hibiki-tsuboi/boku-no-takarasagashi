@@ -60,6 +60,7 @@ struct AdventureMemoryEditorView: View {
                 Section {
                     TextEditor(text: $memoryNote)
                         .frame(minHeight: 120)
+                        .accessibilityLabel("今日のひとこと")
                         .onChange(of: memoryNote) { _, newValue in
                             memoryNote = String(newValue.prefix(200))
                         }

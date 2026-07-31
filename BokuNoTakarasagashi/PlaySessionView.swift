@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import Accessibility
 import SwiftData
 import SwiftUI
 
@@ -585,7 +586,9 @@ struct PlaySessionView: View {
         if stage.matches(passphrase) {
             revealDiscovery()
         } else {
-            answerError = "ちがうみたい。宝をもう一度よく見てみよう。"
+            let message = "ちがうみたい。宝をもう一度よく見てみよう。"
+            answerError = message
+            AccessibilityNotification.Announcement(message).post()
         }
     }
 
@@ -888,6 +891,9 @@ private struct SafetyCheckView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("安全を確認しました")
+                    .accessibilityValue(isConfirmed ? "確認済み" : "未確認")
+                    .accessibilityAddTraits(isConfirmed ? .isSelected : [])
 
                     Button("つぎへ", action: onContinue)
                         .buttonStyle(TreasurePrimaryButtonStyle())

@@ -65,6 +65,7 @@ struct HuntEditorView: View {
 
                         TextEditor(text: $draft.openingMessage)
                             .frame(minHeight: 72)
+                            .accessibilityLabel("はじまりのメッセージ")
                             .onChange(of: draft.openingMessage) { _, newValue in
                                 draft.openingMessage = TreasureContentValidator.limited(
                                     newValue,
@@ -85,6 +86,7 @@ struct HuntEditorView: View {
 
                         TextEditor(text: $draft.completionMessage)
                             .frame(minHeight: 72)
+                            .accessibilityLabel("クリアしたときのメッセージ")
                             .onChange(of: draft.completionMessage) { _, newValue in
                                 draft.completionMessage = TreasureContentValidator.limited(
                                     newValue,
@@ -656,6 +658,7 @@ private struct StageEditorView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     TextEditor(text: $draft.hint)
                         .frame(minHeight: 110)
+                        .accessibilityLabel("ヒント")
                         .focused($focusedField, equals: .hint)
                         .requiredFieldValidationBorder(
                             isVisible: hintIsInvalid
@@ -729,6 +732,10 @@ private struct StageEditorView: View {
 
                         TextEditor(text: $extraHint.text)
                             .frame(minHeight: 82)
+                            .accessibilityLabel(
+                                "おたすけヒント "
+                                    + "\(extraHintNumber(for: extraHint.id))"
+                            )
                             .focused(
                                 $focusedField,
                                 equals: .extraHint(extraHint.id)
@@ -900,6 +907,7 @@ private struct StageEditorView: View {
             Section {
                 TextEditor(text: $draft.discoveryMessage)
                     .frame(minHeight: 82)
+                    .accessibilityLabel("見つけたときのひとこと")
                     .onChange(of: draft.discoveryMessage) { _, newValue in
                         draft.discoveryMessage = TreasureContentValidator.limited(
                             newValue,

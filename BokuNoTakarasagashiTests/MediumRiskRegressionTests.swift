@@ -230,6 +230,49 @@ final class MediumRiskRegressionTests: XCTestCase {
     }
 
     @MainActor
+    func testNFCWriteAllowsEmptyOrMatchingPayloadWithoutConfirmation() {
+        let intendedPayload = TreasurePayload.make(token: "current-treasure")
+
+        XCTAssertFalse(
+            NFCExistingDataWritePolicy.requiresOverwriteConfirmation(
+                existingRecords: [],
+                intendedPayload: intendedPayload
+            )
+        )
+        XCTAssertFalse(
+            NFCExistingDataWritePolicy.requiresOverwriteConfirmation(
+                existingRecords: [.readableValue(intendedPayload)],
+                intendedPayload: intendedPayload
+            )
+        )
+    }
+
+    @MainActor
+    func testNFCWriteRequiresConfirmationBeforeReplacingExistingData() {
+        let intendedPayload = TreasurePayload.make(token: "current-treasure")
+        let otherTreasurePayload = TreasurePayload.make(token: "other-treasure")
+
+        XCTAssertTrue(
+            NFCExistingDataWritePolicy.requiresOverwriteConfirmation(
+                existingRecords: [.readableValue(otherTreasurePayload)],
+                intendedPayload: intendedPayload
+            )
+        )
+        XCTAssertTrue(
+            NFCExistingDataWritePolicy.requiresOverwriteConfirmation(
+                existingRecords: [.readableValue("https://example.com")],
+                intendedPayload: intendedPayload
+            )
+        )
+        XCTAssertTrue(
+            NFCExistingDataWritePolicy.requiresOverwriteConfirmation(
+                existingRecords: [.unrecognized],
+                intendedPayload: intendedPayload
+            )
+        )
+    }
+
+    @MainActor
     func testNFCReadSuccessWaitsForDismissalAndCannotBeCancelled() {
         let successResult = NFCSessionInvalidationResultResolver.resolve(
             pendingResult: .success(()),

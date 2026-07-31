@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import Accessibility
 @preconcurrency import CoreNFC
 import SwiftUI
 
@@ -71,7 +72,7 @@ struct NFCWriterControl: View {
             }
             Button("キャンセル", role: .cancel) {}
         } message: {
-            Text("URLや連絡先など、現在タグに入っているデータは失われます。")
+            Text("別の宝のデータやURL、連絡先など、現在タグに入っているデータは失われます。")
         }
         .onChange(of: payload) {
             resultMessage = nil
@@ -119,7 +120,9 @@ struct NFCWriterControl: View {
                     return
                 }
                 resultIsError = true
-                resultMessage = error.errorDescription
+                let message = error.errorDescription
+                resultMessage = message
+                AccessibilityNotification.Announcement(message).post()
             }
         }
         sessionController = controller
@@ -210,7 +213,9 @@ struct NFCReaderControl: View {
                 onMatch()
             case let .failure(error):
                 guard error != .cancelled else { return }
-                errorMessage = error.errorDescription
+                let message = error.errorDescription
+                errorMessage = message
+                AccessibilityNotification.Announcement(message).post()
             }
         }
         sessionController = controller
@@ -450,6 +455,7 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
 
                     self.prepareWrite(
                         message,
+                        intendedPayload: payload,
                         allowsOverwrite: allowsOverwrite,
                         to: tagBox.value,
                         session: activeSession
@@ -468,6 +474,7 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
 
     private func prepareWrite(
         _ message: NFCNDEFMessage,
+        intendedPayload: String,
         allowsOverwrite: Bool,
         to tag: NFCNDEFTag,
         session: NFCNDEFReaderSession
@@ -508,7 +515,10 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
                 }
 
                 if let existingMessage = messageBox?.value,
-                   self.containsForeignRecords(existingMessage) {
+                   self.requiresOverwriteConfirmation(
+                       for: existingMessage,
+                       intendedPayload: intendedPayload
+                   ) {
                     activeSession.alertMessage =
                         "既存データがあります。上書きする場合は、確認後にもう一度タグを近づけてください。"
                     self.finishAfterInvalidation(
@@ -527,17 +537,25 @@ final class NFCSessionController: NSObject, NFCNDEFReaderSessionDelegate {
         }
     }
 
-    private func containsForeignRecords(_ message: NFCNDEFMessage) -> Bool {
-        message.records.contains { record in
+    private func requiresOverwriteConfirmation(
+        for message: NFCNDEFMessage,
+        intendedPayload: String
+    ) -> Bool {
+        let existingRecords = message.records.map { record in
             let (text, _) = record.wellKnownTypeTextPayload()
             if let text {
-                return !TreasurePayload.isTreasurePayload(text)
+                return NFCExistingRecord.readableValue(text)
             }
             if let url = record.wellKnownTypeURIPayload() {
-                return !TreasurePayload.isTreasurePayload(url.absoluteString)
+                return NFCExistingRecord.readableValue(url.absoluteString)
             }
-            return true
+            return NFCExistingRecord.unrecognized
         }
+
+        return NFCExistingDataWritePolicy.requiresOverwriteConfirmation(
+            existingRecords: existingRecords,
+            intendedPayload: intendedPayload
+        )
     }
 
     private func commitWrite(
@@ -627,6 +645,27 @@ enum NFCExistingDataReadPolicy {
             && error.code
                 == NFCReaderError.Code
                     .ndefReaderSessionErrorZeroLengthMessage.rawValue
+    }
+}
+
+enum NFCExistingRecord: Equatable {
+    case readableValue(String)
+    case unrecognized
+}
+
+enum NFCExistingDataWritePolicy {
+    static func requiresOverwriteConfirmation(
+        existingRecords: [NFCExistingRecord],
+        intendedPayload: String
+    ) -> Bool {
+        existingRecords.contains { record in
+            switch record {
+            case let .readableValue(value):
+                !TreasurePayload.matches(value, expected: intendedPayload)
+            case .unrecognized:
+                true
+            }
+        }
     }
 }
 

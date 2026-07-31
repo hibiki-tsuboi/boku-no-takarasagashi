@@ -68,6 +68,10 @@ struct OpeningVideoView: View {
                 .disabled(!skipInteractionIsEnabled)
                 .accessibilityHidden(!skipInteractionIsEnabled)
                 .accessibilityLabel("オープニングをスキップ")
+                .accessibilityInputLabels([
+                    "TAP TO SKIP",
+                    "オープニングをスキップ",
+                ])
                 .accessibilityHint(
                     "画面をタップしてタイトル画面を表示します"
                 )

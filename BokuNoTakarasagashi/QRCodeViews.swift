@@ -3,6 +3,7 @@
 //  BokuNoTakarasagashi
 //
 
+import Accessibility
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import SwiftUI
@@ -143,9 +144,7 @@ struct QRCodeScannerView: View {
                 if QRCodeScannerCapability.isCurrentlyAvailable {
                     QRDataScannerView(
                         onCode: handle,
-                        onError: { message in
-                            feedbackMessage = message
-                        }
+                        onError: showFeedback
                     )
                     .ignoresSafeArea()
 
@@ -233,9 +232,14 @@ struct QRCodeScannerView: View {
             return true
         }
 
-        feedbackMessage = "これは別の宝のQRコードみたい"
+        showFeedback("これは別の宝のQRコードみたい")
         mismatchCount += 1
         return false
+    }
+
+    private func showFeedback(_ message: String) {
+        feedbackMessage = message
+        AccessibilityNotification.Announcement(message).post()
     }
 }
 
